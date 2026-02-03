@@ -4,13 +4,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>sipher.oc</title>
-    <meta name="description" content="sipher.oc - Digital Excellence. Detailed privacy policy and terms of service.">
+    <title>sipher.oc - Intelligent Digital Assistant</title>
+    <meta name="description"
+        content="sipher.oc - Your personal digital assistant for smart scheduling and task management. Optimize your workflow today.">
     <meta name="robots" content="index, follow">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 4rem;
+            text-align: left;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .feature-title {
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+    </style>
 </head>
 
 <body>
@@ -22,29 +52,52 @@
 
     <div class="container">
         <section class="hero">
-            <div class="glass-card" style="display: inline-block; padding: 4rem 6rem;">
+            <div class="glass-card" style="display: inline-block; padding: 4rem 6rem; max-width: 1000px;">
                 <h1>sipher.oc</h1>
-                <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 0.05em;">Digital Excellence.</p>
-                <div style="margin-top: 2rem;">
-                    <a href="#" class="btn"
-                        style="pointer-events: none; opacity: 0; animation: fadein 2s forwards 1s;">Enter</a>
+                <p style="font-size: 1.25rem; opacity: 0.9; letter-spacing: 0.02em; margin-bottom: 2rem; color: #fff;">
+                    Next-Gen Digital Assistant for Your Workflow
+                </p>
+                <p style="font-size: 1rem; opacity: 0.7; max-width: 600px; margin: 0 auto 3rem;">
+                    Automate your scheduling, organize your tasks, and reclaim your time with our intelligent
+                    productivity platform.
+                </p>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-title">Smart Scheduling</div>
+                        <p style="font-size: 0.9rem; opacity: 0.7;">Seamlessly integrates with your calendar to optimize
+                            your daily agenda.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-title">Task Optimization</div>
+                        <p style="font-size: 0.9rem; opacity: 0.7;">Prioritize what matters most with intelligent task
+                            management algorithms.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-title">Secure & Private</div>
+                        <p style="font-size: 0.9rem; opacity: 0.7;">Your data is encrypted and used strictly to enhance
+                            your personal assistant experience.</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 4rem;">
+                    <a href="#" class="btn" style="pointer-events: none; opacity: 0.5; cursor: default;">Get Started</a>
                 </div>
             </div>
         </section>
     </div>
 
     <footer>
-        &copy; 2024 sipher.oc. All rights reserved.
+        &copy; 2024 sipher.oc. All rights reserved. | <a href="mailto:support@sipher.site">Contact Support</a>
     </footer>
 
     <script>
-        // Simple entry animation
         document.addEventListener('DOMContentLoaded', () => {
             const card = document.querySelector('.glass-card');
             card.style.opacity = '0';
             card.style.transform = 'translateY(20px)';
             card.style.transition = 'all 1s ease-out';
-            
+
             setTimeout(() => {
                 card.style.opacity = '1';
                 card.style.transform = 'translateY(0)';
