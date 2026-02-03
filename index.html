@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sipher.oc</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+    </nav>
+
+    <div class="container">
+        <section class="hero">
+            <div class="glass-card" style="display: inline-block; padding: 4rem 6rem;">
+                <h1>sipher.oc</h1>
+                <p style="font-size: 1.2rem; opacity: 0.8; letter-spacing: 0.05em;">Digital Excellence.</p>
+                <div style="margin-top: 2rem;">
+                  <a href="#" class="btn" style="pointer-events: none; opacity: 0; animation: fadein 2s forwards 1s;">Enter</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        &copy; 2024 sipher.oc. All rights reserved.
+    </footer>
+
+    <script>
+        // Simple entry animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const card = document.querySelector('.glass-card');
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 1s ease-out';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
+</body>
+</html>
