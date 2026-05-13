@@ -278,15 +278,15 @@ function renderVersion() {
   const updateAvailable = Boolean(version.updateAvailable);
   const git = version.git || {};
   const dirty = Boolean(git.dirty);
-  const shortCommit = git.shortCommit ? `@${git.shortCommit}` : "";
   const reasons = version.staleReasons || [];
+  const needsAttention = stale || updateAvailable;
 
-  label.textContent = version.sourceId || `v${version.currentVersion}${shortCommit}`;
-  stateLabel.textContent = stale ? "Stale" : updateAvailable ? "Update" : dirty ? "Dirty" : "Current";
+  label.textContent = `v${version.currentVersion}`;
+  stateLabel.textContent = stale ? "Stale" : updateAvailable ? "Update" : "Current";
   button.classList.toggle("has-update", Boolean(version.updateAvailable));
   button.classList.toggle("is-stale", stale);
   button.setAttribute("aria-expanded", String(state.versionOpen));
-  popover.hidden = !state.versionOpen;
+  popover.hidden = !state.versionOpen || !needsAttention;
   banner.hidden = !stale && !updateAvailable;
   bannerTitle.textContent = stale ? "Stale URL" : "Update available";
   bannerCopy.textContent = stale
@@ -295,19 +295,19 @@ function renderVersion() {
 
   title.textContent = stale
     ? "This is not the canonical Agent Cards URL"
-    : version.updateAvailable
+    : updateAvailable
     ? `Update available: v${version.latestVersion}`
     : dirty
     ? "Agent Cards has local changes"
     : "Agent Cards is current";
   copy.textContent = stale
     ? `Agents must verify /api/version on the exact URL they show. Canonical URL: ${version.canonicalUrl || "not configured"}.`
-    : version.updateAvailable
+    : updateAvailable
     ? "A newer version is available. Run the update command from the project folder, then restart Agent Cards."
     : dirty
     ? `Running local uncommitted changes from ${version.servedFrom}.`
     : `Running ${version.sourceId || `v${version.currentVersion}`}.`;
-  command.textContent = stale || version.updateAvailable
+  command.textContent = stale || updateAvailable
     ? version.updateCommand || "git pull && npm install"
     : `Running ${version.sourceId || `v${version.currentVersion}`}`;
 
@@ -700,6 +700,9 @@ document.addEventListener("click", async (event) => {
   }
 
   if (event.target.closest("#version-button")) {
+    const version = state.version;
+    const needsAttention = Boolean(version?.stale || version?.updateAvailable);
+    if (!needsAttention) return;
     state.versionOpen = !state.versionOpen;
     renderVersion();
     return;
