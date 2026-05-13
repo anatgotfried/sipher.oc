@@ -27,6 +27,19 @@
     }
   ],
   "metadata": {
-    "draftSubject": "Availability for a small build project"
+    "draft": {
+      "to": "Jordan Lee <jordan@example.com>",
+      "subject": "Availability for a small build project",
+      "body": "Hi Jordan,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAnat"
+    },
+    "risks": [
+      "External recipient",
+      "Mentions budget and project timing"
+    ],
+    "attachments": [
+      {
+        "name": "Q2_Proposal_Overview.pdf"
+      }
+    ]
   }
 }

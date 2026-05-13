@@ -32,8 +32,46 @@ npm run list
 
 Expected result: five demo cards are listed, including approval, choice, question, status, and briefing cards.
 
+## Agent Integration Rules
+
+Read `AGENT_INTEGRATION.md` before creating cards.
+
+Approval cards must be reviewable. If the agent asks the user to approve an email, file change, command, publish action, purchase, or scheduling action, include the exact draft, diff, command, recipient, risk, or attachment in `details` or `metadata`.
+
+Bad approval card:
+
+```json
+{
+  "type": "approval",
+  "title": "Send weekly summary?",
+  "summary": "Draft ready.",
+  "actions": ["approve", "reject", "edit"]
+}
+```
+
+Good approval card:
+
+```json
+{
+  "type": "approval",
+  "title": "Send weekly summary?",
+  "summary": "Draft ready — review recipient and body.",
+  "details": "This sends an external message.",
+  "actions": ["send", "edit", "reject"],
+  "metadata": {
+    "draft": {
+      "to": "Eden <eden@example.com>",
+      "subject": "Summer camp weekly summary",
+      "body": "Hi Eden,\n\nHere are the confirmed dates..."
+    },
+    "risks": ["External recipient"]
+  }
+}
+```
+
 ## Important Files
 
+- `AGENT_INTEGRATION.md`: contract for agents creating useful cards
 - `index.html`: app shell
 - `style.css`: responsive product UI
 - `app.js`: browser state, rendering, and card interactions

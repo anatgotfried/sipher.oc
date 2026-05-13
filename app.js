@@ -3,7 +3,8 @@ const state = {
   events: [],
   view: "needs-me",
   type: "all",
-  selectedId: null
+  selectedId: null,
+  justHandled: new Set()
 };
 
 const views = {
@@ -97,7 +98,7 @@ function normalizeAction(action) {
 
 function visibleCards() {
   const byView = state.cards.filter((card) => {
-    if (state.view === "needs-me") return actionable.has(card.status);
+    if (state.view === "needs-me") return actionable.has(card.status) || state.justHandled.has(card.id);
     if (state.view === "archive") return archived.has(card.status);
     return true;
   });
@@ -143,6 +144,7 @@ async function respond(cardId, action, payload = {}) {
     method: "POST",
     body: JSON.stringify({ action, payload })
   });
+  if (action !== "archive") state.justHandled.add(cardId);
   await load();
   state.selectedId = cardId;
   renderDetail();
@@ -214,7 +216,7 @@ function renderCardBody(card) {
   if (card.type === "choice") {
     const options = (card.options || []).slice(0, 4).map((option) => `
       <button class="option-card" data-action="choose" data-card-id="${escapeHtml(card.id)}" data-option-id="${escapeHtml(option.id)}" type="button">
-        <strong>${escapeHtml(option.title)}</strong>
+        <strong>${escapeHtml(option.title || option.label || option.id || "Option")}</strong>
         <span>${escapeHtml(option.description || "")}</span>
       </button>
     `).join("");
@@ -255,7 +257,9 @@ function renderCardBody(card) {
 }
 
 function renderActions(card) {
-  const actions = (card.actions || []).map(normalizeAction).filter(Boolean);
+  const actions = (card.actions || [])
+    .map(normalizeAction)
+    .filter((action) => action && !isHandledInline(card, action));
   if (!actions.length || archived.has(card.status)) return "";
   const hasArchive = actions.some((action) => action.id === "archive");
 
@@ -268,6 +272,13 @@ function renderActions(card) {
       ${hasArchive ? "" : `<button class="ghost-button" data-action="archive" data-card-id="${escapeHtml(card.id)}" type="button">Archive</button>`}
     </div>
   `;
+}
+
+function isHandledInline(card, action) {
+  if (action.id === "view") return true;
+  if (card.type === "choice" && action.id === "choose") return true;
+  if (card.type === "question" && action.id === "answer") return true;
+  return false;
 }
 
 function renderDetail() {
@@ -293,6 +304,7 @@ function renderDetail() {
       <h3>Context</h3>
       <p>${escapeHtml(card.details || "No extra detail provided.")}</p>
     </section>
+    ${renderReviewPayload(card)}
     <section class="detail-section">
       <h3>Callback</h3>
       <p>${escapeHtml(card.callbackUrl || "No callback URL configured. Events are stored locally.")}</p>
@@ -309,6 +321,63 @@ function renderDetail() {
       </div>
     </section>
   `;
+}
+
+function renderReviewPayload(card) {
+  const metadata = card.metadata || {};
+  const review = metadata.review || {};
+  const draft = metadata.draft || review.draft;
+  const risks = metadata.risks || review.risks || [];
+  const attachments = metadata.attachments || review.attachments || [];
+  const sections = metadata.sections || review.sections || [];
+
+  if (!draft && !risks.length && !attachments.length && !sections.length && !Object.keys(metadata).length) return "";
+
+  const draftHtml = draft ? `
+    <section class="detail-section">
+      <h3>Draft To Review</h3>
+      <div class="review-box">
+        ${draft.to ? `<div class="review-row"><strong>To</strong><span>${escapeHtml(draft.to)}</span></div>` : ""}
+        ${draft.subject ? `<div class="review-row"><strong>Subject</strong><span>${escapeHtml(draft.subject)}</span></div>` : ""}
+        ${draft.body ? `<pre class="draft-body">${escapeHtml(draft.body)}</pre>` : ""}
+      </div>
+    </section>
+  ` : "";
+
+  const risksHtml = risks.length ? `
+    <section class="detail-section">
+      <h3>Risks</h3>
+      <ul class="detail-list">${risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}</ul>
+    </section>
+  ` : "";
+
+  const attachmentsHtml = attachments.length ? `
+    <section class="detail-section">
+      <h3>Attachments</h3>
+      <ul class="detail-list">${attachments.map((item) => `<li>${escapeHtml(item.name || item.title || item.url || item)}</li>`).join("")}</ul>
+    </section>
+  ` : "";
+
+  const sectionsHtml = sections.length ? `
+    <section class="detail-section">
+      <h3>Review Notes</h3>
+      ${sections.map((section) => `
+        <div class="review-box">
+          <strong>${escapeHtml(section.title || "Section")}</strong>
+          <p>${escapeHtml(section.body || section.text || "")}</p>
+        </div>
+      `).join("")}
+    </section>
+  ` : "";
+
+  const rawMetadataHtml = !draft && !risks.length && !attachments.length && !sections.length ? `
+    <section class="detail-section">
+      <h3>Metadata</h3>
+      <pre class="draft-body">${escapeHtml(JSON.stringify(metadata, null, 2))}</pre>
+    </section>
+  ` : "";
+
+  return `${draftHtml}${risksHtml}${attachmentsHtml}${sectionsHtml}${rawMetadataHtml}`;
 }
 
 document.addEventListener("click", async (event) => {

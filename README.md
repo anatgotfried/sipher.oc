@@ -4,7 +4,9 @@ Agent Cards is a local, self-hostable visual action feed for AI agents. Agents c
 
 ## For agents
 
-Start with `AGENTS.md`, then run the app locally with `npm start`. The fastest verification path is `npm run seed`, `npm run list`, and opening `http://localhost:4173`.
+Start with `AGENTS.md` and `AGENT_INTEGRATION.md`, then run the app locally with `npm start`. The fastest verification path is `npm run seed`, `npm run list`, and opening `http://localhost:4173`.
+
+Do not create approval cards without reviewable content. If an agent wants the user to approve an email, file change, command, purchase, or publish action, it must include the exact draft, diff, command, recipient, risk, or attachment in `details` or `metadata`. See `AGENT_INTEGRATION.md` for payload examples.
 
 ## Run locally
 
@@ -85,6 +87,8 @@ Core fields:
 - `items`: briefing-card bullet items
 - `callbackUrl`: optional webhook for structured feedback events
 - `metadata`: agent-owned structured context
+
+For approval cards, use `metadata.draft`, `metadata.risks`, `metadata.attachments`, or `metadata.sections` so the detail panel can show what is being approved.
 
 ## MVP scope implemented
 

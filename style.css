@@ -466,6 +466,49 @@ select,
   line-height: 1.45;
 }
 
+.review-box {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fbfdff;
+  padding: 11px;
+  margin-bottom: 10px;
+}
+
+.review-row {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  color: #374151;
+  font-size: 13px;
+}
+
+.review-row strong {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.draft-body {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 11px;
+  color: #111827;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #374151;
+  line-height: 1.5;
+}
+
 .empty-state {
   border: 1px dashed var(--border);
   border-radius: var(--radius);
