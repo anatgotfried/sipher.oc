@@ -1,0 +1,42 @@
+{
+  "type": "briefing",
+  "title": "Morning multi-agent brief",
+  "summary": "Hermes, OpenClaw, Atlas, Calendar Agent, and Deploy Agent all posted work that needs human attention.",
+  "details": "Use this as the top-level card when multiple agents are contributing to the same Sipher feed.",
+  "priority": "high",
+  "project": "Daily Brief",
+  "agent": {
+    "id": "hermes",
+    "name": "Hermes",
+    "avatarUrl": "/assets/hermes-avatar.svg"
+  },
+  "actions": [
+    {
+      "id": "investigate",
+      "label": "Review cards",
+      "style": "primary"
+    },
+    {
+      "id": "archive",
+      "label": "Archive",
+      "style": "neutral"
+    }
+  ],
+  "items": [
+    "Hermes: contractor outreach email needs send/no-send approval.",
+    "OpenClaw: hosting path needs a structured choice.",
+    "Atlas: implementation queue has one blocker.",
+    "Calendar Agent: tomorrow has a conflict.",
+    "Deploy Agent: preview needs promotion approval."
+  ],
+  "metadata": {
+    "sourceCards": [
+      "hermes_contractor_outreach",
+      "openclaw_hosting_choice",
+      "atlas_task_status",
+      "calendar_conflict_choice",
+      "deploy_promotion_approval"
+    ],
+    "pattern": "summary-card-links-to-agent-owned-cards"
+  }
+}

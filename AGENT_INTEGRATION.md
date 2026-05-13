@@ -103,6 +103,56 @@ npm run simulate:edge
 
 The source fixtures live in `simulations/agent-scenarios.json`. Add new scenarios there when a real agent creates a payload shape worth preserving as a regression case.
 
+Generate a multi-agent feed with Hermes, OpenClaw, Atlas, Calendar Agent, and Deploy Agent:
+
+```bash
+npm run simulate -- multi-agent
+```
+
+Or with the CLI directly:
+
+```bash
+node cli/agent-cards.js simulate multi-agent
+```
+
+## Multi-Agent Feed Pattern
+
+Sipher is one shared human action feed. Multiple agents can write cards into it as long as each card has a stable owner and a clear next step.
+
+Recommended agent identities:
+
+```json
+{ "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" }
+{ "id": "openclaw", "name": "OpenClaw" }
+{ "id": "atlas", "name": "Atlas" }
+{ "id": "calendar-agent", "name": "Calendar Agent" }
+{ "id": "deploy-agent", "name": "Deploy Agent" }
+```
+
+Rules:
+
+- One card should have one primary owning agent in `agent`.
+- If another agent contributed evidence, put that in `metadata.contributors`.
+- Use `project` to group related cards across agents, for example `Agent Cards`, `Family`, `Calendar`, or `Sipher`.
+- Use a briefing card when Hermes summarizes other agents' cards. Put linked card IDs in `metadata.sourceCards`.
+- Use a status card for progress, a question card for missing information, a choice/comparison card for preferences, and an approval card only for consequential actions.
+- If the same issue changes, update the existing card with `PATCH /api/cards/<id>` instead of creating duplicate cards.
+- After a user action, read the event and close the loop with a status update, callback, or archived/completed card.
+
+Good multi-agent sequence:
+
+1. OpenClaw creates a comparison card for hosting options.
+2. The user chooses `tailscale-serve`.
+3. OpenClaw receives the `choose` event and posts a status card with the implementation plan.
+4. Deploy Agent later creates an approval card with checks, release note, and rollback plan.
+5. Hermes creates a briefing card that references the OpenClaw and Deploy cards in `metadata.sourceCards`.
+
+Bad multi-agent sequence:
+
+1. Five agents each create vague "What should I do?" cards.
+2. Cards do not include `project`, stable `agent.id`, or callback information.
+3. The user cannot tell which agent owns the next step.
+
 ## Minimal Card Shape
 
 ```json
@@ -239,6 +289,8 @@ Question cards should include the exact expected answer format.
 - Do not create approval cards without the exact reviewable content.
 - Do not use approvals for low-stakes FYI updates.
 - After receiving an action event, the agent should close the loop with a status update or archived/completed card.
+- Do not keep asking the same question in new cards. Update or archive the previous card first.
+- Do not create cards for internal reasoning. Create cards only for decisions, reviewable actions, status the user needs, or preferences that unblock the agent.
 
 ## UX Expectations
 

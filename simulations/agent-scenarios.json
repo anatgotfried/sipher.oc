@@ -125,6 +125,187 @@
       ]
     }
   ],
+  "multi-agent": [
+    {
+      "type": "briefing",
+      "title": "Morning multi-agent brief",
+      "summary": "Five agents posted the work that needs a human decision today.",
+      "details": "This card is a compact cross-agent summary. Each item points at another structured card in the feed.",
+      "priority": "high",
+      "project": "Daily Brief",
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
+      "actions": [
+        { "id": "investigate", "label": "Review cards", "style": "primary" },
+        { "id": "archive", "label": "Archive", "style": "neutral" }
+      ],
+      "items": [
+        "Hermes: contractor outreach email needs send/no-send approval.",
+        "OpenClaw: Agent Cards deployment path needs a hosting decision.",
+        "Atlas: two implementation tasks are ready but one dependency is blocked.",
+        "Calendar Agent: tomorrow has a 30-minute conflict that needs a preference.",
+        "Deploy Agent: preview passed checks and is waiting for promotion approval."
+      ],
+      "metadata": {
+        "sourceCards": [
+          "hermes_contractor_outreach",
+          "openclaw_hosting_choice",
+          "atlas_task_status",
+          "calendar_conflict_choice",
+          "deploy_promotion_approval"
+        ]
+      }
+    },
+    {
+      "id": "hermes_contractor_outreach",
+      "type": "approval",
+      "title": "Send contractor outreach email?",
+      "summary": "Hermes drafted a message to ask availability, rate range, and portfolio examples.",
+      "details": "This sends an external message. Review recipient, subject, body, and risk before approving.",
+      "priority": "high",
+      "project": "Contractor outreach",
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
+      "actions": [
+        { "id": "send", "label": "Send", "style": "primary" },
+        { "id": "edit", "label": "Edit", "style": "neutral" },
+        { "id": "reject", "label": "Reject", "style": "danger" }
+      ],
+      "metadata": {
+        "draft": {
+          "to": "Jordan Lee <jordan@example.com>",
+          "subject": "Availability for a small build project",
+          "body": "Hi Jordan,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAnat"
+        },
+        "risks": [
+          "External recipient",
+          "Mentions budget and project timing"
+        ],
+        "handoff": {
+          "onSend": "Hermes sends the email and posts a status card with the sent timestamp.",
+          "onEdit": "Hermes opens an edit flow and replaces this card with a revised draft."
+        }
+      }
+    },
+    {
+      "id": "openclaw_hosting_choice",
+      "type": "comparison",
+      "title": "Choose Agent Cards hosting path",
+      "summary": "OpenClaw compared local-only, Tailscale Serve, and always-on deployment options.",
+      "details": "Pick the operating model. OpenClaw will turn the chosen option into setup tasks.",
+      "priority": "medium",
+      "project": "Agent Cards",
+      "agent": { "id": "openclaw", "name": "OpenClaw" },
+      "actions": [
+        { "id": "choose", "label": "Choose", "style": "primary" },
+        { "id": "investigate", "label": "Compare more", "style": "neutral" }
+      ],
+      "options": [
+        {
+          "id": "tailscale-serve",
+          "title": "Tailscale Serve",
+          "description": "Private URL across devices with low operational overhead.",
+          "meta": "Recommended",
+          "recommended": true
+        },
+        {
+          "id": "local-only",
+          "title": "Local only",
+          "description": "Best for single-machine development, not useful from phone.",
+          "meta": "$0"
+        },
+        {
+          "id": "always-on",
+          "title": "Always-on VPS",
+          "description": "Good uptime, but needs auth, process supervision, and backups.",
+          "meta": "More ops"
+        }
+      ],
+      "metadata": {
+        "decision": "hosting_model",
+        "nextAgent": "openclaw"
+      }
+    },
+    {
+      "id": "atlas_task_status",
+      "type": "status",
+      "title": "Atlas implementation queue",
+      "summary": "Atlas completed two prep tasks and is blocked on one product decision.",
+      "details": "Ready: card schema cleanup, action event replay. Blocked: whether cards should support comments.",
+      "priority": "medium",
+      "project": "Agent Cards",
+      "agent": { "id": "atlas", "name": "Atlas" },
+      "actions": [
+        { "id": "investigate", "label": "Inspect queue", "style": "primary" },
+        { "id": "archive", "label": "Archive", "style": "neutral" }
+      ],
+      "progress": 68,
+      "blocker": "Needs comments decision",
+      "metadata": {
+        "completed": ["schema cleanup", "event replay notes"],
+        "blocked": ["comments vs no-comments decision"]
+      }
+    },
+    {
+      "id": "calendar_conflict_choice",
+      "type": "choice",
+      "title": "Resolve tomorrow's calendar conflict",
+      "summary": "Calendar Agent found two overlapping holds and needs a preference.",
+      "details": "Choose which event should keep the slot. The agent will draft the follow-up for the other event.",
+      "priority": "medium",
+      "project": "Calendar",
+      "agent": { "id": "calendar-agent", "name": "Calendar Agent" },
+      "actions": ["choose"],
+      "options": [
+        {
+          "id": "keep-product-review",
+          "title": "Keep product review",
+          "description": "Move contractor call to the afternoon."
+        },
+        {
+          "id": "keep-contractor-call",
+          "title": "Keep contractor call",
+          "description": "Ask product review group for async notes."
+        }
+      ],
+      "metadata": {
+        "calendarDate": "tomorrow",
+        "conflictWindow": "09:30-10:00"
+      }
+    },
+    {
+      "id": "deploy_promotion_approval",
+      "type": "approval",
+      "title": "Promote preview to production?",
+      "summary": "Deploy Agent says preview checks passed and needs explicit promotion approval.",
+      "details": "This changes the live production app. Review checks, release note, and rollback plan.",
+      "priority": "high",
+      "project": "Sipher",
+      "agent": { "id": "deploy-agent", "name": "Deploy Agent" },
+      "actions": [
+        { "id": "approve", "label": "Promote", "style": "primary" },
+        { "id": "reject", "label": "Hold", "style": "danger" }
+      ],
+      "metadata": {
+        "sections": [
+          {
+            "title": "Checks",
+            "body": "node --check server.js, node --check app.js, node --check cli/agent-cards.js"
+          },
+          {
+            "title": "Release note",
+            "body": "Adds version freshness checks, richer docs, and read-only resolved action cards."
+          },
+          {
+            "title": "Rollback",
+            "body": "Revert to previous deployment if /api/version or card actions fail."
+          }
+        ],
+        "risks": [
+          "Production promotion",
+          "Affects all agents using Agent Cards"
+        ]
+      }
+    }
+  ],
   "edge": [
     {
       "type": "approval",

@@ -1,0 +1,44 @@
+{
+  "type": "approval",
+  "title": "Promote preview to production?",
+  "summary": "Deploy Agent says preview checks passed and needs explicit promotion approval.",
+  "details": "This changes the live production app. Review checks, release note, and rollback plan.",
+  "priority": "high",
+  "project": "Sipher",
+  "agent": {
+    "id": "deploy-agent",
+    "name": "Deploy Agent"
+  },
+  "actions": [
+    {
+      "id": "approve",
+      "label": "Promote",
+      "style": "primary"
+    },
+    {
+      "id": "reject",
+      "label": "Hold",
+      "style": "danger"
+    }
+  ],
+  "metadata": {
+    "sections": [
+      {
+        "title": "Checks",
+        "body": "node --check server.js, node --check app.js, node --check cli/agent-cards.js"
+      },
+      {
+        "title": "Release note",
+        "body": "Adds version freshness checks, richer docs, and read-only resolved action cards."
+      },
+      {
+        "title": "Rollback",
+        "body": "Revert to previous deployment if /api/version or card actions fail."
+      }
+    ],
+    "risks": [
+      "Production promotion",
+      "Affects all agents using Agent Cards"
+    ]
+  }
+}

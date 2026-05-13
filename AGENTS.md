@@ -20,6 +20,12 @@ Seed demo cards:
 npm run seed
 ```
 
+Generate a shared feed where Hermes, OpenClaw, Atlas, Calendar Agent, and Deploy Agent all write cards:
+
+```bash
+npm run simulate -- multi-agent
+```
+
 ## Freshness Rule For Agents
 
 Before claiming Agent Cards is latest, verify `/api/version` from the exact URL being shown or sent to the user.
@@ -47,6 +53,8 @@ Expected result: five demo cards are listed, including approval, choice, questio
 Read `AGENT_INTEGRATION.md` before creating cards.
 
 Approval cards must be reviewable. If the agent asks the user to approve an email, file change, command, publish action, purchase, or scheduling action, include the exact draft, diff, command, recipient, risk, or attachment in `details` or `metadata`.
+
+Multiple agents may write into the same Sipher feed. Each card must have one primary owner in `agent`, stable `agent.id`, a clear `project`, and a clear next action. Use `metadata.sourceCards` or `metadata.contributors` for cross-agent context instead of vague shared ownership.
 
 Bad approval card:
 

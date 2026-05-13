@@ -48,6 +48,12 @@ Generate a richer Hermes-style simulation:
 npm run simulate
 ```
 
+Generate a multi-agent feed with Hermes, OpenClaw, Atlas, Calendar Agent, and Deploy Agent:
+
+```bash
+npm run simulate -- multi-agent
+```
+
 Run the basic verification path:
 
 ```bash
@@ -131,11 +137,15 @@ Operational rule: keep Tailscale Funnel off until Sipher has app-level authentic
 ```bash
 node cli/agent-cards.js seed
 node cli/agent-cards.js simulate realistic
+node cli/agent-cards.js simulate multi-agent
 node cli/agent-cards.js simulate edge
 node cli/agent-cards.js simulate list
 node cli/agent-cards.js list
 node cli/agent-cards.js create examples/approval-card.json
 node cli/agent-cards.js create examples/choice-card.json
+node cli/agent-cards.js create examples/multi-agent-briefing.json
+node cli/agent-cards.js create examples/openclaw-comparison-card.json
+node cli/agent-cards.js create examples/deploy-approval-card.json
 node cli/agent-cards.js action demo_send_email send
 ```
 
@@ -194,6 +204,24 @@ Core fields:
 Approval cards must be reviewable. If an agent asks you to approve an email, file change, command, purchase, publish action, or scheduling action, it must include the exact content being approved in `details` or `metadata`.
 
 See [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md) for payload examples and lifecycle rules.
+
+## Multi-Agent Example
+
+Sipher is designed for a shared agent feed. Hermes can summarize the morning, OpenClaw can ask for an architecture decision, Atlas can report implementation progress, Calendar Agent can ask for a scheduling preference, and Deploy Agent can request production approval.
+
+The bundled multi-agent simulation creates that full pattern:
+
+```bash
+node cli/agent-cards.js simulate multi-agent
+```
+
+The examples are intentionally copyable:
+
+- [multi-agent-briefing.json](examples/multi-agent-briefing.json): Hermes summary card with `metadata.sourceCards`
+- [openclaw-comparison-card.json](examples/openclaw-comparison-card.json): OpenClaw decision card with structured options
+- [deploy-approval-card.json](examples/deploy-approval-card.json): Deploy Agent approval card with checks, release note, rollback, and risks
+
+Agent rule of thumb: one card has one primary owner in `agent`; cross-agent context belongs in `metadata.contributors` or `metadata.sourceCards`.
 
 ## Implemented MVP
 

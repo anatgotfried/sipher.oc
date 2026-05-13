@@ -1,0 +1,49 @@
+{
+  "type": "comparison",
+  "title": "Choose Agent Cards hosting path",
+  "summary": "OpenClaw compared local-only, Tailscale Serve, and always-on deployment options.",
+  "details": "Pick the operating model. OpenClaw will turn the chosen option into setup tasks.",
+  "priority": "medium",
+  "project": "Agent Cards",
+  "agent": {
+    "id": "openclaw",
+    "name": "OpenClaw"
+  },
+  "actions": [
+    {
+      "id": "choose",
+      "label": "Choose",
+      "style": "primary"
+    },
+    {
+      "id": "investigate",
+      "label": "Compare more",
+      "style": "neutral"
+    }
+  ],
+  "options": [
+    {
+      "id": "tailscale-serve",
+      "title": "Tailscale Serve",
+      "description": "Private URL across devices with low operational overhead.",
+      "meta": "Recommended",
+      "recommended": true
+    },
+    {
+      "id": "local-only",
+      "title": "Local only",
+      "description": "Best for single-machine development, not useful from phone.",
+      "meta": "$0"
+    },
+    {
+      "id": "always-on",
+      "title": "Always-on VPS",
+      "description": "Good uptime, but needs auth, process supervision, and backups.",
+      "meta": "More ops"
+    }
+  ],
+  "metadata": {
+    "decision": "hosting_model",
+    "nextAgent": "openclaw"
+  }
+}
