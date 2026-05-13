@@ -1,0 +1,162 @@
+{
+  "realistic": [
+    {
+      "type": "approval",
+      "title": "Send weekly summary to Eden?",
+      "summary": "Draft ready — covers dates, pickup logistics, and what to pack.",
+      "details": "This sends an external message. Confirm recipient, subject, body, and risks before approving.",
+      "priority": "medium",
+      "project": "Family",
+      "agent": { "id": "hermes", "name": "Hermes" },
+      "actions": [
+        { "id": "send", "label": "Send", "style": "primary" },
+        { "id": "edit", "label": "Edit", "style": "neutral" },
+        { "id": "reject", "label": "Reject", "style": "danger" }
+      ],
+      "metadata": {
+        "draft": {
+          "to": "Eden <eden@example.com>",
+          "subject": "Summer camp weekly summary",
+          "body": "Hi Eden,\n\nQuick summary for this week:\n\n- Camp runs Sunday through Thursday, 08:30-14:00.\n- Pickup is at the north gate unless it rains.\n- Please pack a hat, water bottle, sunscreen, and a change of clothes.\n\nCan you confirm you saw this?\n\nThanks,\nAnat"
+        },
+        "risks": [
+          "External recipient",
+          "Contains family logistics"
+        ],
+        "attachments": [
+          { "name": "summer_camp_dates.pdf" }
+        ]
+      }
+    },
+    {
+      "type": "approval",
+      "title": "Apply docs change?",
+      "summary": "Hermes wants to update setup instructions for agents.",
+      "details": "Review the target file and diff before approving.",
+      "priority": "high",
+      "project": "Agent Cards",
+      "agent": { "id": "hermes", "name": "Hermes" },
+      "actions": ["approve", "reject", "edit"],
+      "metadata": {
+        "sections": [
+          {
+            "title": "File",
+            "body": "README.md"
+          },
+          {
+            "title": "Proposed diff",
+            "body": "- npm run dev\n+ npm start\n\n+ Read AGENT_INTEGRATION.md before creating approval cards."
+          }
+        ],
+        "risks": [
+          "Changes public setup instructions",
+          "May affect future agents bootstrapping from GitHub"
+        ]
+      }
+    },
+    {
+      "type": "choice",
+      "title": "Which project should I prioritize this week?",
+      "summary": "Pick one focus area for Hermes to advance.",
+      "details": "The selected option will become the next agent work queue.",
+      "priority": "high",
+      "project": "Work",
+      "agent": { "id": "hermes", "name": "Hermes" },
+      "actions": ["choose"],
+      "options": [
+        {
+          "id": "anat-os",
+          "label": "Anat OS",
+          "description": "Memory, skills, kanban, proactive loop"
+        },
+        {
+          "id": "burnrate",
+          "label": "Burnrate",
+          "description": "Endurance nutrition app — ship v1"
+        },
+        {
+          "id": "reg-monitor",
+          "label": "Regulation Monitor",
+          "description": "Get regulationmonitor.online off the ground"
+        }
+      ]
+    },
+    {
+      "type": "question",
+      "title": "What's the budget for Burnrate hosting Q3?",
+      "summary": "Needed to spec infrastructure before more build work.",
+      "details": "Answer with a monthly cap. Hermes will use it for provider choices.",
+      "priority": "medium",
+      "project": "Burnrate",
+      "agent": { "id": "hermes", "name": "Hermes" },
+      "actions": ["answer"],
+      "input": {
+        "placeholder": "e.g. $50/month",
+        "required": true
+      }
+    },
+    {
+      "type": "status",
+      "title": "Anat OS — build status",
+      "summary": "Current sprint progress across all layers.",
+      "details": "Memory: 96%, Skills: core done, Kanban: migrating from Linear, Proactive loop: MVP ready.",
+      "priority": "medium",
+      "project": "Anat OS",
+      "agent": { "id": "hermes", "name": "Hermes" },
+      "actions": ["view", "archive"],
+      "progress": 78,
+      "blocker": "No blocker"
+    },
+    {
+      "type": "briefing",
+      "title": "Morning Brief — Simulated",
+      "summary": "Five things to know to start the day.",
+      "details": "A compact summary card for recurring agent briefings.",
+      "priority": "high",
+      "project": "Daily Brief",
+      "agent": { "id": "hermes", "name": "Hermes" },
+      "actions": ["archive"],
+      "items": [
+        "Calendar: one logistics conflict at 14:00.",
+        "Burnrate: API integration spec ready for review.",
+        "Agent Cards: integration contract now covers reviewable approvals.",
+        "Regulation Monitor: landing copy needs one decision.",
+        "Family: camp summary draft is waiting for approval."
+      ]
+    }
+  ],
+  "edge": [
+    {
+      "type": "approval",
+      "title": "Bad approval example — missing draft",
+      "summary": "This intentionally demonstrates what agents should not send.",
+      "details": "The UI can show this card, but the agent should not ask for approval without reviewable content.",
+      "priority": "high",
+      "project": "QA",
+      "agent": { "id": "bad-agent", "name": "Bad Agent" },
+      "actions": ["approve", "reject", "edit"],
+      "metadata": {}
+    },
+    {
+      "type": "choice",
+      "title": "Choice with long labels",
+      "summary": "Tests option wrapping, label fallback, and stable option IDs.",
+      "priority": "medium",
+      "project": "QA",
+      "agent": { "id": "simulator", "name": "Simulator" },
+      "actions": ["choose"],
+      "options": [
+        {
+          "id": "long-a",
+          "label": "A very long option label that should wrap without breaking layout",
+          "description": "Short description"
+        },
+        {
+          "id": "long-b",
+          "title": "Option using title instead of label",
+          "description": "Tests both supported fields"
+        }
+      ]
+    }
+  ]
+}

@@ -24,10 +24,25 @@ Seed the demo cards:
 npm run seed
 ```
 
+Simulate a richer Hermes-like agent feed:
+
+```bash
+npm run simulate
+```
+
+Simulate edge cases and intentionally bad payloads:
+
+```bash
+npm run simulate:edge
+```
+
 ## Agent CLI
 
 ```bash
 node cli/agent-cards.js seed
+node cli/agent-cards.js simulate realistic
+node cli/agent-cards.js simulate edge
+node cli/agent-cards.js simulate list
 node cli/agent-cards.js list
 node cli/agent-cards.js create examples/approval-card.json
 node cli/agent-cards.js create examples/choice-card.json

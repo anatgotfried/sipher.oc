@@ -12,6 +12,22 @@ Every card should answer three questions:
 
 If the user cannot confidently decide from the card detail panel, the card payload is incomplete.
 
+## Local Simulation
+
+You can generate realistic cards without a live agent:
+
+```bash
+npm run simulate
+```
+
+You can generate edge cases, including intentionally bad cards, with:
+
+```bash
+npm run simulate:edge
+```
+
+The source fixtures live in `simulations/agent-scenarios.json`. Add new scenarios there when a real agent creates a payload shape worth preserving as a regression case.
+
 ## Minimal Card Shape
 
 ```json

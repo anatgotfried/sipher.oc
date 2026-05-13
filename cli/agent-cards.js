@@ -22,6 +22,7 @@ function usage() {
 
 Usage:
   agent-cards seed
+  agent-cards simulate [scenario]
   agent-cards list
   agent-cards create <card.json>
   agent-cards update <card-id> <patch.json>
@@ -36,6 +37,18 @@ async function readJson(file) {
   return JSON.parse(await fs.readFile(path.resolve(file), "utf8"));
 }
 
+async function createCards(cards) {
+  const created = [];
+  for (const card of cards) {
+    const result = await request("/api/cards", {
+      method: "POST",
+      body: JSON.stringify(card)
+    });
+    created.push(result.card);
+  }
+  return created;
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
 
@@ -47,6 +60,23 @@ async function main() {
   if (command === "seed") {
     const result = await request("/api/demo/seed", { method: "POST" });
     console.log(`Seeded ${result.cards.length} demo cards.`);
+    return;
+  }
+
+  if (command === "simulate") {
+    const scenario = args[0] || "realistic";
+    const scenarios = await readJson(path.join(__dirname, "..", "simulations", "agent-scenarios.json"));
+    if (scenario === "list") {
+      console.log(Object.keys(scenarios).join("\n"));
+      return;
+    }
+    const cards = scenarios[scenario];
+    if (!cards) throw new Error(`Unknown scenario: ${scenario}. Run agent-cards simulate list.`);
+    const created = await createCards(cards);
+    console.log(`Simulated ${created.length} ${scenario} cards.`);
+    for (const card of created) {
+      console.log(`${card.id}\t${card.type}\t${card.title}`);
+    }
     return;
   }
 
