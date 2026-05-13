@@ -419,6 +419,12 @@ async function handleApi(req, res, url) {
     return json(res, 201, { cards });
   }
 
+  if (req.method === "POST" && url.pathname === "/api/cards/reset") {
+    const before = { cards: db.cards.length, events: db.events.length };
+    await writeDb({ cards: [], events: [], agents: db.agents || [] });
+    return json(res, 200, { ok: true, reset: before });
+  }
+
   if (parts[0] === "api" && parts[1] === "cards" && parts[2]) {
     const card = db.cards.find((item) => item.id === parts[2]);
     if (!card) return notFound(res);

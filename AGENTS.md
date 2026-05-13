@@ -26,6 +26,12 @@ Generate a shared feed where Hermes, OpenClaw, Atlas, Calendar Agent, and Deploy
 npm run simulate -- multi-agent
 ```
 
+Reset local cards and event history:
+
+```bash
+node cli/agent-cards.js reset --yes
+```
+
 ## Freshness Rule For Agents
 
 Before claiming Agent Cards is latest, verify `/api/version` from the exact URL being shown or sent to the user.

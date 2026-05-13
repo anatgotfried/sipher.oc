@@ -141,6 +141,7 @@ node cli/agent-cards.js simulate multi-agent
 node cli/agent-cards.js simulate edge
 node cli/agent-cards.js simulate list
 node cli/agent-cards.js list
+node cli/agent-cards.js reset --yes
 node cli/agent-cards.js create examples/approval-card.json
 node cli/agent-cards.js create examples/choice-card.json
 node cli/agent-cards.js create examples/multi-agent-briefing.json
@@ -165,6 +166,12 @@ List cards and events:
 
 ```bash
 curl http://localhost:4173/api/cards
+```
+
+Reset local cards and event history:
+
+```bash
+curl -X POST http://localhost:4173/api/cards/reset
 ```
 
 Check freshness:

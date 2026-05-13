@@ -22,6 +22,7 @@ function usage() {
 
 Usage:
   agent-cards seed
+  agent-cards reset --yes
   agent-cards simulate [scenario]
   agent-cards list
   agent-cards create <card.json>
@@ -60,6 +61,13 @@ async function main() {
   if (command === "seed") {
     const result = await request("/api/demo/seed", { method: "POST" });
     console.log(`Seeded ${result.cards.length} demo cards.`);
+    return;
+  }
+
+  if (command === "reset") {
+    if (args[0] !== "--yes") throw new Error("Refusing to reset without --yes.");
+    const result = await request("/api/cards/reset", { method: "POST" });
+    console.log(`Reset ${result.reset.cards} cards and ${result.reset.events} events.`);
     return;
   }
 

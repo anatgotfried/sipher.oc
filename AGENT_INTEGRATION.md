@@ -115,6 +115,12 @@ Or with the CLI directly:
 node cli/agent-cards.js simulate multi-agent
 ```
 
+Reset the local feed when examples or test cards pile up:
+
+```bash
+node cli/agent-cards.js reset --yes
+```
+
 ## Multi-Agent Feed Pattern
 
 Sipher is one shared human action feed. Multiple agents can write cards into it as long as each card has a stable owner and a clear next step.
@@ -152,6 +158,34 @@ Bad multi-agent sequence:
 1. Five agents each create vague "What should I do?" cards.
 2. Cards do not include `project`, stable `agent.id`, or callback information.
 3. The user cannot tell which agent owns the next step.
+
+## Practical Card Quality Bar
+
+Agents should surface only things that are useful for a human to decide, review, or know now.
+
+Create a card when at least one is true:
+
+- The agent is blocked on a concrete answer.
+- The next step has external or irreversible consequences.
+- The user must choose between real options.
+- The status changes what the user should expect today.
+- A recurring brief summarizes actionable work across agents.
+
+Do not create a card for:
+
+- Internal scratch work.
+- Generic "checking in" messages.
+- Work the agent can safely complete without the user.
+- Duplicate reminders for the same unresolved issue.
+- Approvals without the exact draft, diff, command, recipient, release note, cost, or risk.
+
+Every useful card should include:
+
+- A title that names the decision or status.
+- A summary that explains why it matters now.
+- `details` or `metadata` with the evidence needed to decide.
+- A small set of actions that map to what the agent will actually do next.
+- A stable `agent.id`, `project`, and, when useful, `callbackUrl`.
 
 ## Minimal Card Shape
 

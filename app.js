@@ -361,6 +361,18 @@ async function seedDemo() {
   await load();
 }
 
+async function resetCards() {
+  const confirmed = confirm("Reset all local cards and event history? This cannot be undone.");
+  if (!confirmed) return;
+  await api("/api/cards/reset", { method: "POST" });
+  state.cards = [];
+  state.events = [];
+  state.selectedId = null;
+  state.detailOpen = false;
+  state.justHandled.clear();
+  await load();
+}
+
 function render() {
   const counts = {
     needs: state.cards.filter((card) => actionable.has(card.status)).length,
@@ -766,6 +778,7 @@ $("#type-filter").addEventListener("change", (event) => {
 });
 
 $("#seed-demo").addEventListener("click", seedDemo);
+$("#reset-cards").addEventListener("click", resetCards);
 
 load();
 setInterval(load, 10000);

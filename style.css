@@ -434,6 +434,10 @@ select,
   background: #ffffff;
 }
 
+.reset-button {
+  color: var(--red);
+}
+
 .ui-icon {
   width: 16px;
   height: 16px;
@@ -1406,7 +1410,7 @@ button:disabled {
 
   .toolbar {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
   }
 
   .card {
