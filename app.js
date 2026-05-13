@@ -27,6 +27,25 @@ const views = {
 
 const actionable = new Set(["new", "waiting", "viewed", "in_progress", "edited"]);
 const archived = new Set(["completed", "dismissed", "expired", "archived", "approved", "rejected"]);
+const actionLabels = {
+  approve: "Approve",
+  archive: "Archive",
+  answer: "Answer",
+  choose: "Choose",
+  edit: "Edit",
+  investigate: "Investigate",
+  more_like_this: "More like this",
+  pass: "Pass",
+  reject: "Reject",
+  send: "Send",
+  view: "View"
+};
+const actionStyles = {
+  approve: "primary",
+  send: "primary",
+  more_like_this: "primary",
+  reject: "danger"
+};
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -51,6 +70,29 @@ function formatTime(value) {
 
 function cardStatus(card) {
   return String(card.status || "new").replaceAll("_", " ");
+}
+
+function titleize(value) {
+  return String(value || "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeAction(action) {
+  if (typeof action === "string") {
+    return {
+      id: action,
+      label: actionLabels[action] || titleize(action),
+      style: actionStyles[action] || "neutral"
+    };
+  }
+  if (!action || typeof action !== "object") return null;
+  const id = action.id || action.action || "respond";
+  return {
+    id,
+    label: action.label || actionLabels[id] || titleize(id),
+    style: action.style || actionStyles[id] || "neutral"
+  };
 }
 
 function visibleCards() {
@@ -213,7 +255,7 @@ function renderCardBody(card) {
 }
 
 function renderActions(card) {
-  const actions = card.actions || [];
+  const actions = (card.actions || []).map(normalizeAction).filter(Boolean);
   if (!actions.length || archived.has(card.status)) return "";
   const hasArchive = actions.some((action) => action.id === "archive");
 

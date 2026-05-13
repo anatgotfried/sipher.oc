@@ -85,7 +85,7 @@ function normalizeCard(input) {
     priority: input.priority || "medium",
     project: input.project || "Inbox",
     agent: input.agent || { id: "local-agent", name: "Local Agent" },
-    actions: input.actions || [],
+    actions: normalizeActions(input.actions || []),
     options: input.options || [],
     input: input.input || null,
     items: input.items || [],
@@ -96,6 +96,49 @@ function normalizeCard(input) {
     createdAt: input.createdAt || time,
     updatedAt: input.updatedAt || time
   };
+}
+
+function normalizeActions(actions) {
+  const labels = {
+    approve: "Approve",
+    archive: "Archive",
+    answer: "Answer",
+    choose: "Choose",
+    edit: "Edit",
+    investigate: "Investigate",
+    more_like_this: "More like this",
+    pass: "Pass",
+    reject: "Reject",
+    send: "Send",
+    view: "View"
+  };
+  const styles = {
+    approve: "primary",
+    send: "primary",
+    more_like_this: "primary",
+    reject: "danger"
+  };
+  return actions.map((action) => {
+    if (typeof action === "string") {
+      return {
+        id: action,
+        label: labels[action] || titleize(action),
+        style: styles[action] || "neutral"
+      };
+    }
+    if (!action || typeof action !== "object") return null;
+    return {
+      id: action.id || action.action || "respond",
+      label: action.label || labels[action.id] || titleize(action.id || action.action || "respond"),
+      style: action.style || styles[action.id] || "neutral"
+    };
+  }).filter(Boolean);
+}
+
+function titleize(value) {
+  return String(value || "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function nextStatus(action, card) {
