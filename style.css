@@ -681,12 +681,6 @@ span.ui-icon[data-icon="archive"] {
   text-transform: capitalize;
 }
 
-.expiration-chip.soon {
-  border-color: rgba(255, 149, 0, 0.28);
-  background: rgba(255, 249, 235, 0.92);
-  color: #8a5800;
-}
-
 .priority.high .risk-dot,
 .approval-preview .risk-dot {
   background: var(--red);

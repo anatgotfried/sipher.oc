@@ -168,18 +168,6 @@ function latestEvent(cardId, action) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
 }
 
-function isExpiringSoon(card) {
-  if (!card.expiresAt || resolved.has(card.status)) return false;
-  const remaining = new Date(card.expiresAt).getTime() - Date.now();
-  return remaining > 0 && remaining <= 24 * 60 * 60 * 1000;
-}
-
-function expirationChip(card) {
-  if (!card.expiresAt) return "";
-  const label = card.status === "expired" ? "expired" : `expires ${formatRelativeTime(card.expiresAt)}`;
-  return `<span class="chip expiration-chip ${isExpiringSoon(card) ? "soon" : ""}">${icon("clock")}${escapeHtml(label)}</span>`;
-}
-
 function titleize(value) {
   return String(value || "")
     .replaceAll("_", " ")
@@ -433,7 +421,6 @@ function renderCard(card) {
       <div class="meta-row">
         <span class="chip priority ${escapeHtml(card.priority || "low")}"><span class="risk-dot"></span>${escapeHtml(card.priority || "low")}</span>
         <span class="chip">${icon("clock")}${escapeHtml(cardStatus(card))}</span>
-        ${expirationChip(card)}
       </div>
       ${renderActions(card)}
       ${pending ? renderActionOverlay(pending) : ""}
@@ -607,7 +594,6 @@ function renderDetail() {
     <div class="meta-row">
       ${typeBadge(card)}
       <span class="chip">${escapeHtml(cardStatus(card))}</span>
-      ${expirationChip(card)}
     </div>
     <section class="detail-section">
       <h3>Context</h3>
