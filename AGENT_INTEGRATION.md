@@ -186,6 +186,35 @@ Every useful card should include:
 - `details` or `metadata` with the evidence needed to decide.
 - A small set of actions that map to what the agent will actually do next.
 - A stable `agent.id`, `project`, and, when useful, `callbackUrl`.
+- `expiresAt` when the card stops being useful after a deadline.
+
+## Expiration
+
+Use `expiresAt` for time-sensitive cards. It must be an ISO timestamp.
+
+```json
+{
+  "type": "choice",
+  "title": "Resolve tomorrow's calendar conflict",
+  "summary": "Calendar Agent needs a preference before sending updates.",
+  "expiresAt": "2026-05-14T06:30:00.000Z"
+}
+```
+
+Expiration behavior:
+
+- When `expiresAt` passes, Sipher marks the card `expired`.
+- Expired cards leave `Needs Me` and move to `Archive`.
+- Sipher records an `expired` event with the original `expiresAt`.
+- Resolved cards do not expire later.
+
+Recommended expiration windows:
+
+- Scheduling cards: expire before the first affected event.
+- Draft-send approvals: expire when the draft becomes stale.
+- Shopping, booking, or pricing decisions: expire when price or availability may change.
+- Daily briefs: expire at the end of the day.
+- Status cards: expire only if the status is no longer useful after a known time.
 
 ## Minimal Card Shape
 
@@ -199,6 +228,7 @@ Every useful card should include:
   "project": "Family",
   "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
   "actions": ["approve", "reject", "edit"],
+  "expiresAt": "2026-05-14T18:00:00.000Z",
   "metadata": {}
 }
 ```

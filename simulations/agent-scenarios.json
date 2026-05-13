@@ -134,6 +134,7 @@
       "priority": "high",
       "project": "Daily Brief",
       "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
+      "expiresAt": "2026-05-14T20:59:00.000Z",
       "actions": [
         { "id": "investigate", "label": "Review cards", "style": "primary" },
         { "id": "archive", "label": "Archive", "style": "neutral" }
@@ -253,6 +254,7 @@
       "priority": "medium",
       "project": "Calendar",
       "agent": { "id": "calendar-agent", "name": "Calendar Agent" },
+      "expiresAt": "2026-05-14T06:30:00.000Z",
       "actions": ["choose"],
       "options": [
         {
@@ -280,6 +282,7 @@
       "priority": "high",
       "project": "Sipher",
       "agent": { "id": "deploy-agent", "name": "Deploy Agent" },
+      "expiresAt": "2026-05-15T12:00:00.000Z",
       "actions": [
         { "id": "approve", "label": "Promote", "style": "primary" },
         { "id": "reject", "label": "Hold", "style": "danger" }

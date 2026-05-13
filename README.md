@@ -206,7 +206,10 @@ Core fields:
 - `input`: question-card input metadata
 - `items`: briefing-card bullet items
 - `callbackUrl`: optional webhook for structured feedback events
+- `expiresAt`: optional ISO timestamp for time-sensitive cards
 - `metadata`: agent-owned structured context
+
+When `expiresAt` passes, Sipher marks unresolved cards `expired`, records an `expired` event, and moves them out of Needs Me into Archive. Use it for calendar conflicts, stale drafts, booking/pricing decisions, and daily briefs.
 
 Approval cards must be reviewable. If an agent asks you to approve an email, file change, command, purchase, publish action, or scheduling action, it must include the exact content being approved in `details` or `metadata`.
 

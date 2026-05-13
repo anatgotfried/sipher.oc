@@ -10,6 +10,7 @@
     "name": "Hermes",
     "avatarUrl": "/assets/hermes-avatar.svg"
   },
+  "expiresAt": "2026-05-14T20:59:00.000Z",
   "actions": [
     {
       "id": "investigate",

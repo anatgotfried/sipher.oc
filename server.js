@@ -102,6 +102,7 @@ function normalizeCard(input) {
     blocker: input.blocker || "",
     callbackUrl: input.callbackUrl || "",
     metadata: input.metadata || {},
+    expiresAt: input.expiresAt || input.expiration || null,
     createdAt: input.createdAt || time,
     updatedAt: input.updatedAt || time
   };
@@ -249,6 +250,30 @@ function isResolved(card) {
   return ["approved", "archived", "completed", "dismissed", "expired", "rejected", "responded"].includes(card.status);
 }
 
+function shouldExpire(card, timestamp = Date.now()) {
+  return card.expiresAt && !isResolved(card) && new Date(card.expiresAt).getTime() <= timestamp;
+}
+
+async function expireDueCards(db) {
+  const timestamp = Date.now();
+  const expiredAt = now();
+  let changed = false;
+  for (const card of db.cards) {
+    if (!shouldExpire(card, timestamp)) continue;
+    card.status = "expired";
+    card.updatedAt = expiredAt;
+    db.events.push({
+      id: id("event"),
+      cardId: card.id,
+      action: "expired",
+      payload: { expiresAt: card.expiresAt },
+      createdAt: expiredAt
+    });
+    changed = true;
+  }
+  if (changed) await writeDb(db);
+}
+
 async function postCallback(card, event) {
   if (!card.callbackUrl) return;
   try {
@@ -383,6 +408,7 @@ function demoCards() {
 
 async function handleApi(req, res, url) {
   const db = await readDb();
+  await expireDueCards(db);
   const parts = url.pathname.split("/").filter(Boolean);
 
   if (req.method === "GET" && url.pathname === "/api/health") {
