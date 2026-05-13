@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Hermes agent avatar">
+  <defs>
+    <linearGradient id="g" x1="16" x2="80" y1="12" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A84FF"/>
+      <stop offset="1" stop-color="#64D2FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="28" fill="url(#g)"/>
+  <path fill="#fff" d="M49.6 19.5c-9.8 0-18.7 5.7-22.8 14.6l-6.2 13.6c-.8 1.8.5 3.9 2.5 3.9h8.4c.8 10.3 8.1 18.7 17.9 21.1v4.5c0 1.7 1.4 3.1 3.1 3.1h11.2c1.8 0 3.1-1.4 3.1-3.1V65.7c0-1.7-1.4-3.1-3.1-3.1H52.6c-5.8 0-10.6-4-11.8-9.3h11.8c12.5 0 22.7-10.1 22.7-22.7 0-6.1-5-11.1-11.1-11.1H49.6Zm-5.8 16.8a5.4 5.4 0 1 1 10.8 0 5.4 5.4 0 0 1-10.8 0Z"/>
+</svg>

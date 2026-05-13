@@ -13,32 +13,56 @@
   <body>
     <div id="app" class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyeline">Local action feed</p>
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">
+            <img src="/icon.svg" alt="">
+          </span>
           <h1>Agent Cards</h1>
         </div>
-        <div class="server-pill" title="Local API status">
-          <span class="status-dot"></span>
-          <span id="api-status">Syncing</span>
+        <div class="topbar-actions">
+          <div class="version-menu">
+            <button id="version-button" class="version-button" type="button" aria-expanded="false" aria-controls="version-popover">
+              <span id="version-label">v...</span>
+              <strong id="version-state">Checking</strong>
+            </button>
+            <div id="version-popover" class="version-popover" hidden>
+              <button class="version-close" type="button" data-version-close aria-label="Close version details">×</button>
+              <div>
+                <h2 id="version-title">Version</h2>
+                <p id="version-copy">Checking for updates.</p>
+              </div>
+              <code id="version-command">npm start</code>
+              <a id="version-link" href="#" hidden>Open release</a>
+            </div>
+          </div>
+          <div class="server-pill" title="Local API status">
+            <span class="status-dot"></span>
+            <span id="api-status">Syncing</span>
+          </div>
         </div>
       </header>
+
+      <div id="freshness-banner" class="freshness-banner" hidden>
+        <strong id="freshness-title">Stale instance</strong>
+        <span id="freshness-copy">Verify the running Agent Cards URL.</span>
+      </div>
 
       <main class="main-grid">
         <aside class="rail" aria-label="Agent Cards sections">
           <button class="nav-item active" data-view="needs-me" type="button">
-            <span>Needs Me</span>
+            <span class="nav-label"><span class="ui-icon" data-icon="inbox"></span>Needs Me</span>
             <strong id="needs-count">0</strong>
           </button>
           <button class="nav-item" data-view="today" type="button">
-            <span>Today</span>
+            <span class="nav-label"><span class="ui-icon" data-icon="calendar"></span>Today</span>
             <strong id="today-count">0</strong>
           </button>
           <button class="nav-item" data-view="projects" type="button">
-            <span>Projects</span>
+            <span class="nav-label"><span class="ui-icon" data-icon="folder"></span>Projects</span>
             <strong id="project-count">0</strong>
           </button>
           <button class="nav-item" data-view="archive" type="button">
-            <span>Archive</span>
+            <span class="nav-label"><span class="ui-icon" data-icon="archive"></span>Archive</span>
             <strong id="archive-count">0</strong>
           </button>
         </aside>
@@ -80,10 +104,10 @@
       </main>
 
       <nav class="bottom-nav" aria-label="Primary">
-        <button class="bottom-item active" data-view="needs-me" type="button">Needs Me</button>
-        <button class="bottom-item" data-view="today" type="button">Today</button>
-        <button class="bottom-item" data-view="projects" type="button">Projects</button>
-        <button class="bottom-item" data-view="archive" type="button">Archive</button>
+        <button class="bottom-item active" data-view="needs-me" type="button"><span class="ui-icon" data-icon="inbox"></span><span>Needs Me</span></button>
+        <button class="bottom-item" data-view="today" type="button"><span class="ui-icon" data-icon="calendar"></span><span>Today</span></button>
+        <button class="bottom-item" data-view="projects" type="button"><span class="ui-icon" data-icon="folder"></span><span>Projects</span></button>
+        <button class="bottom-item" data-view="archive" type="button"><span class="ui-icon" data-icon="archive"></span><span>Archive</span></button>
       </nav>
     </div>
 

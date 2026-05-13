@@ -3,11 +3,19 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { execFileSync } = require("node:child_process");
+const pkg = require("./package.json");
 
 const root = __dirname;
 const dataDir = path.join(root, "data");
 const dbPath = path.join(dataDir, "agent-cards.json");
 const port = Number(process.env.PORT || 4173);
+const currentVersion = pkg.version || "0.0.0";
+const latestVersion = process.env.AGENT_CARDS_LATEST_VERSION || currentVersion;
+const updateCommand = process.env.AGENT_CARDS_UPDATE_COMMAND || "git pull && npm install";
+const updateUrl = process.env.AGENT_CARDS_UPDATE_URL || "";
+const canonicalUrl = process.env.AGENT_CARDS_CANONICAL_URL || "";
+const serverStartedAt = new Date().toISOString();
 
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -15,6 +23,7 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".svg": "image/svg+xml; charset=utf-8",
   ".txt": "text/plain; charset=utf-8"
 };
 
@@ -141,6 +150,92 @@ function titleize(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function compareVersions(a, b) {
+  const left = String(a || "0").split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const right = String(b || "0").split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const diff = (left[index] || 0) - (right[index] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+function git(args) {
+  try {
+    return execFileSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function gitMetadata() {
+  const branch = git(["branch", "--show-current"]);
+  const commit = git(["rev-parse", "HEAD"]);
+  const shortCommit = commit ? commit.slice(0, 7) : "";
+  const upstream = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+  const upstreamCommit = upstream ? git(["rev-parse", "@{u}"]) : "";
+  const dirty = Boolean(git(["status", "--porcelain"]));
+  const aheadBehind = upstream ? git(["rev-list", "--left-right", "--count", "HEAD...@{u}"]) : "";
+  const [ahead = "", behind = ""] = aheadBehind.split(/\s+/);
+  return {
+    branch,
+    commit,
+    shortCommit,
+    upstream,
+    upstreamCommit,
+    dirty,
+    ahead: Number(ahead) || 0,
+    behind: Number(behind) || 0
+  };
+}
+
+function requestOrigin(req) {
+  const protocol = req.headers["x-forwarded-proto"] || "http";
+  return `${protocol}://${req.headers.host}`;
+}
+
+function versionPayload(req) {
+  const gitInfo = gitMetadata();
+  const versionBehind = compareVersions(currentVersion, latestVersion) < 0;
+  const gitBehind = gitInfo.behind > 0;
+  let hostMismatch = false;
+
+  if (canonicalUrl) {
+    try {
+      hostMismatch = new URL(requestOrigin(req)).host !== new URL(canonicalUrl).host;
+    } catch {
+      hostMismatch = false;
+    }
+  }
+
+  return {
+    app: "agent-cards",
+    currentVersion,
+    latestVersion,
+    sourceId: `${currentVersion}${gitInfo.shortCommit ? `+${gitInfo.shortCommit}` : ""}${gitInfo.dirty ? ".dirty" : ""}`,
+    latest: !versionBehind && !gitBehind && !hostMismatch,
+    updateAvailable: versionBehind || gitBehind,
+    stale: hostMismatch,
+    staleReasons: [
+      versionBehind ? "package_version_behind" : "",
+      gitBehind ? "git_upstream_behind" : "",
+      hostMismatch ? "non_canonical_url" : ""
+    ].filter(Boolean),
+    updateCommand,
+    updateUrl,
+    canonicalUrl,
+    requestUrl: requestOrigin(req),
+    servedFrom: root,
+    serverStartedAt,
+    git: gitInfo
+  };
+}
+
 function nextStatus(action, card) {
   if (action === "archive") return "archived";
   if (action === "approve" || action === "send") return "approved";
@@ -148,6 +243,10 @@ function nextStatus(action, card) {
   if (action === "edit" || action === "request_changes") return "edited";
   if (action === "answer" || action === "choose") return "responded";
   return card.status === "new" ? "viewed" : card.status;
+}
+
+function isResolved(card) {
+  return ["approved", "archived", "completed", "dismissed", "expired", "rejected", "responded"].includes(card.status);
 }
 
 async function postCallback(card, event) {
@@ -165,40 +264,48 @@ async function postCallback(card, event) {
 
 function demoCards() {
   const time = now();
-  const hermes = { id: "hermes", name: "Hermes" };
+  const hermes = { id: "hermes", name: "Hermes", avatarUrl: "/assets/hermes-avatar.svg" };
   const openclaw = { id: "openclaw", name: "OpenClaw" };
   return [
     normalizeCard({
       id: "demo_send_email",
       type: "approval",
-      title: "Send this email?",
-      summary: "Hermes drafted an outreach email to a contractor lead.",
-      details: "The email asks for availability, budget range, and portfolio examples. Sending is external, so it requires explicit approval.",
+      title: "Send weekly summary to Eden?",
+      summary: "Hermes drafted the update and needs approval before sending.",
+      details: "The email goes to an external recipient. Review the recipient, subject, and draft body before approving.",
       priority: "high",
-      project: "Contractor outreach",
+      project: "Executive Assistant",
       agent: hermes,
       actions: [
         { id: "send", label: "Send", style: "primary" },
         { id: "edit", label: "Edit", style: "neutral" },
         { id: "reject", label: "Reject", style: "danger" }
       ],
+      metadata: {
+        draft: {
+          to: "Eden Shoham <eden@example.com>",
+          subject: "Weekly update",
+          body: "Hi Eden,\n\nHere's your weekly update.\n\n- Key progress on Project Atlas\n- Hiring update\n- Risks and blockers\n\nLet me know if you'd like anything else.\n\n- Anat"
+        },
+        risks: ["Medium risk"]
+      },
       createdAt: time,
       updatedAt: time
     }),
     normalizeCard({
       id: "demo_weekend",
       type: "choice",
-      title: "Pick a weekend idea.",
-      summary: "Hermes found 4 kid-friendly options within 90 minutes.",
-      details: "Swipe or tap an option. Feedback is stored as structured preference data for the agent.",
+      title: "Which project should I prioritize this week?",
+      summary: "Hermes narrowed the decision to four active workstreams.",
+      details: "Tap an option to send structured priority feedback back to the agent.",
       priority: "medium",
-      project: "Family logistics",
+      project: "Executive Assistant",
       agent: hermes,
       options: [
-        { id: "farm", title: "Morning farm visit", description: "Animals, shade, 42 min drive" },
-        { id: "science", title: "Science museum", description: "Indoor, hands-on, near lunch" },
-        { id: "forest", title: "Forest picnic", description: "Short trail and playground" },
-        { id: "beach", title: "Sunset beach walk", description: "Low effort, best after 17:00" }
+        { id: "atlas", title: "Project Atlas", description: "Unblocks the largest product decision" },
+        { id: "hiring", title: "Hiring loop", description: "Needs feedback before interviews" },
+        { id: "finance", title: "Finance cleanup", description: "Keeps the month-end close moving" },
+        { id: "docs", title: "Ops docs", description: "Low risk, useful for delegation" }
       ],
       actions: [
         { id: "more_like_this", label: "More like this", style: "primary" },
@@ -208,13 +315,13 @@ function demoCards() {
     normalizeCard({
       id: "demo_question",
       type: "question",
-      title: "What budget should I assume?",
-      summary: "OpenClaw needs a budget ceiling before comparing hosting options.",
-      details: "A short answer is enough. Example: under $25/month unless traffic spikes.",
+      title: "What should be the theme of the Q2 offsite?",
+      summary: "Hermes needs one direction before drafting the agenda.",
+      details: "A short answer is enough. Example: operating clarity, customer empathy, or stronger execution rhythm.",
       priority: "medium",
-      project: "Agent Cards",
-      agent: openclaw,
-      input: { kind: "short_text", placeholder: "Budget ceiling" },
+      project: "Executive Assistant",
+      agent: hermes,
+      input: { kind: "short_text", placeholder: "Theme or direction" },
       actions: []
     }),
     normalizeCard({
@@ -231,6 +338,25 @@ function demoCards() {
       actions: [
         { id: "investigate", label: "Investigate", style: "neutral" },
         { id: "approve", label: "Looks good", style: "primary" }
+      ]
+    }),
+    normalizeCard({
+      id: "demo_comparison",
+      type: "comparison",
+      title: "Choose the best hosting option",
+      summary: "OpenClaw compared three low-maintenance paths for the Agent Cards API.",
+      details: "Recommendation favors the least operational overhead while keeping deployment simple.",
+      priority: "medium",
+      project: "Agent Cards",
+      agent: openclaw,
+      options: [
+        { id: "local", title: "Local Node", description: "Fastest for private self-hosted use.", meta: "$0/month", recommended: true },
+        { id: "fly", title: "Fly.io", description: "Good always-on deployment with a small ops surface.", meta: "Low cost" },
+        { id: "vercel", title: "Vercel", description: "Great static hosting, API persistence needs storage.", meta: "Needs DB" }
+      ],
+      actions: [
+        { id: "choose", label: "Choose", style: "primary" },
+        { id: "investigate", label: "Compare more", style: "neutral" }
       ]
     }),
     normalizeCard({
@@ -261,6 +387,10 @@ async function handleApi(req, res, url) {
 
   if (req.method === "GET" && url.pathname === "/api/health") {
     return json(res, 200, { ok: true, cards: db.cards.length, events: db.events.length });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/version") {
+    return json(res, 200, versionPayload(req));
   }
 
   if (req.method === "GET" && url.pathname === "/api/cards") {
@@ -295,6 +425,9 @@ async function handleApi(req, res, url) {
 
     if (req.method === "PATCH" && parts.length === 3) {
       const patch = await readBody(req);
+      if (isResolved(card) && patch.status === "viewed") {
+        return json(res, 409, { error: "card_resolved", card });
+      }
       Object.assign(card, patch, { updatedAt: now() });
       db.events.push({ id: id("event"), cardId: card.id, action: "updated", payload: patch, createdAt: now() });
       await writeDb(db);
@@ -303,6 +436,9 @@ async function handleApi(req, res, url) {
 
     if (req.method === "POST" && parts[3] === "actions") {
       const input = await readBody(req);
+      if (isResolved(card) && input.action !== "archive") {
+        return json(res, 409, { error: "card_resolved", card });
+      }
       const event = {
         id: id("event"),
         cardId: card.id,

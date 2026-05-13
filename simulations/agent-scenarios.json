@@ -7,7 +7,7 @@
       "details": "This sends an external message. Confirm recipient, subject, body, and risks before approving.",
       "priority": "medium",
       "project": "Family",
-      "agent": { "id": "hermes", "name": "Hermes" },
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": [
         { "id": "send", "label": "Send", "style": "primary" },
         { "id": "edit", "label": "Edit", "style": "neutral" },
@@ -35,7 +35,7 @@
       "details": "Review the target file and diff before approving.",
       "priority": "high",
       "project": "Agent Cards",
-      "agent": { "id": "hermes", "name": "Hermes" },
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": ["approve", "reject", "edit"],
       "metadata": {
         "sections": [
@@ -61,7 +61,7 @@
       "details": "The selected option will become the next agent work queue.",
       "priority": "high",
       "project": "Work",
-      "agent": { "id": "hermes", "name": "Hermes" },
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": ["choose"],
       "options": [
         {
@@ -88,7 +88,7 @@
       "details": "Answer with a monthly cap. Hermes will use it for provider choices.",
       "priority": "medium",
       "project": "Burnrate",
-      "agent": { "id": "hermes", "name": "Hermes" },
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": ["answer"],
       "input": {
         "placeholder": "e.g. $50/month",
@@ -102,7 +102,7 @@
       "details": "Memory: 96%, Skills: core done, Kanban: migrating from Linear, Proactive loop: MVP ready.",
       "priority": "medium",
       "project": "Anat OS",
-      "agent": { "id": "hermes", "name": "Hermes" },
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": ["view", "archive"],
       "progress": 78,
       "blocker": "No blocker"
@@ -114,7 +114,7 @@
       "details": "A compact summary card for recurring agent briefings.",
       "priority": "high",
       "project": "Daily Brief",
-      "agent": { "id": "hermes", "name": "Hermes" },
+      "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": ["archive"],
       "items": [
         "Calendar: one logistics conflict at 14:00.",

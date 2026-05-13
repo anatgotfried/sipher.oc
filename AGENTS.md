@@ -20,6 +20,16 @@ Seed demo cards:
 npm run seed
 ```
 
+## Freshness Rule For Agents
+
+Before claiming Agent Cards is latest, verify `/api/version` from the exact URL being shown or sent to the user.
+
+```bash
+curl "$AGENT_CARDS_URL/api/version"
+```
+
+If `AGENT_CARDS_URL` is unset, use the browser URL itself. Do not verify `localhost` and then show a Tailscale/IP URL. Missing `/api/version`, `404`, invalid JSON, `stale: true`, or `updateAvailable: true` means the instance is not latest. If `git.dirty` is true, call it the latest local working tree, not the latest committed version.
+
 ## Verify It
 
 ```bash

@@ -12,6 +12,81 @@ Every card should answer three questions:
 
 If the user cannot confidently decide from the card detail panel, the card payload is incomplete.
 
+## Persistent User Links
+
+Agents must not send `localhost` links to the user. `localhost` only works on the same machine as the process and is not a durable daily-use link.
+
+For private user-facing links, Agent Cards expects Tailscale Serve to be configured first:
+
+```bash
+npm start
+tailscale serve --bg 4173
+tailscale serve status
+```
+
+`tailscale serve status` returns the persistent private HTTPS base URL, usually:
+
+```text
+https://<machine-name>.<tailnet-name>.ts.net
+```
+
+Set that URL in the agent environment:
+
+```bash
+export AGENT_CARDS_URL="https://<machine-name>.<tailnet-name>.ts.net"
+```
+
+Agent rule:
+
+- If `AGENT_CARDS_URL` is a Tailscale HTTPS URL, use it for user-facing links.
+- If `AGENT_CARDS_URL` is unset or is `http://localhost:4173`, use it only for local API calls from the same machine.
+- Before sending the user a link, verify the persistent Tailscale URL opens from a tailnet-connected device.
+- Do not use Tailscale Funnel for approval/action links unless Agent Cards has app-level auth and action protection.
+
+Good user-facing link:
+
+```text
+https://<machine-name>.<tailnet-name>.ts.net
+```
+
+Bad user-facing link:
+
+```text
+http://localhost:4173
+```
+
+## Freshness Rule
+
+Agents must verify the exact Agent Cards URL before saying it is latest or sending the user a screenshot.
+
+Required check:
+
+```bash
+curl "$AGENT_CARDS_URL/api/version"
+```
+
+If `AGENT_CARDS_URL` is unset, use the exact URL being shown in the browser. Do not verify `localhost` and then show or describe a different Tailscale/IP URL.
+
+The response is the source of truth:
+
+- `latest: true` means this URL is serving the current known checkout.
+- `stale: true` means the URL is not canonical. Do not call it latest.
+- `updateAvailable: true` means the checkout or configured package version is behind.
+- Missing `/api/version`, `404`, or invalid JSON means the instance is stale or not Agent Cards.
+- `git.dirty: true` means the app includes local uncommitted changes. Say "latest local working tree", not "latest committed version".
+
+Good agent claim:
+
+```text
+Verified https://<machine>.<tailnet>.ts.net/api/version: sourceId 0.1.0+ae254a4.dirty, latest local working tree, served from /path/to/sipher.oc.
+```
+
+Bad agent claim:
+
+```text
+This is latest because the screenshot looks right.
+```
+
 ## Local Simulation
 
 You can generate realistic cards without a live agent:
@@ -38,13 +113,15 @@ The source fixtures live in `simulations/agent-scenarios.json`. Add new scenario
   "details": "This will send an external message. Review the full draft before approving.",
   "priority": "medium",
   "project": "Family",
-  "agent": { "id": "hermes", "name": "Hermes" },
+  "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
   "actions": ["approve", "reject", "edit"],
   "metadata": {}
 }
 ```
 
 `actions` may be strings or objects. Prefer objects when a label needs to be specific.
+
+Agents should send stable identity. Include `agent.name`, and include `agent.avatarUrl` when the agent has an image. The app supports local paths such as `/assets/hermes-avatar.svg` and remote image URLs.
 
 ```json
 [
@@ -68,7 +145,7 @@ Recommended email/message approval:
   "details": "This sends an external message. Confirm the recipient and body before approving.",
   "priority": "medium",
   "project": "Family",
-  "agent": { "id": "hermes", "name": "Hermes" },
+  "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
   "actions": [
     { "id": "send", "label": "Send", "style": "primary" },
     { "id": "edit", "label": "Edit", "style": "neutral" },

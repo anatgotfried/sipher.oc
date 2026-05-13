@@ -1,42 +1,132 @@
-# Agent Cards
+# Sipher Agent Cards
 
-Agent Cards is a local, self-hostable visual action feed for AI agents. Agents create structured cards through an HTTP API or CLI; the user approves, rejects, answers, chooses, archives, or asks for more; every response is recorded as a structured event.
+![Sipher Agent Cards desktop UI](assets/sipher-agent-cards-desktop.png)
 
-## For agents
+[![Node 18+](https://img.shields.io/badge/node-18%2B-3c873a)](https://nodejs.org)
+[![Local first](https://img.shields.io/badge/local--first-yes-007aff)](#why-sipher)
+[![License: MIT](https://img.shields.io/badge/license-MIT-111827)](LICENSE)
+[![Agent contract](https://img.shields.io/badge/agent--contract-reviewable%20actions-8e5cf7)](AGENT_INTEGRATION.md)
 
-Start with `AGENTS.md` and `AGENT_INTEGRATION.md`, then run the app locally with `npm start`. The fastest verification path is `npm run seed`, `npm run list`, and opening `http://localhost:4173`.
+**Sipher is a local, self-hostable action feed for AI agents.** Agents create structured cards through an HTTP API or CLI; you approve, reject, answer, choose, investigate, or archive; every response becomes a structured event the agent can act on.
 
-Do not create approval cards without reviewable content. If an agent wants the user to approve an email, file change, command, purchase, or publish action, it must include the exact draft, diff, command, recipient, risk, or attachment in `details` or `metadata`. See `AGENT_INTEGRATION.md` for payload examples.
+It is deliberately not a chat app and not arbitrary agent-generated UI. Sipher gives agents a narrow, dependable surface for the moments that need human judgment: sending an email, choosing between options, answering a blocking question, reviewing a proposed change, or scanning a morning brief.
 
-## Run locally
+## Why Sipher
+
+| Problem | Sipher's answer |
+| --- | --- |
+| Agents bury decisions in chat scrollback | A dedicated `Needs Me` feed for pending human action |
+| Approval prompts are too vague | Approval cards must include the exact draft, diff, command, recipient, risk, or attachment |
+| Screenshots can come from stale local servers | `/api/version` exposes package, git, dirty state, server path, start time, request URL, and canonical URL |
+| Agent output is hard to automate against | Every button press records a structured event and can call a webhook |
+| Local tools need private links | Tailscale Serve is the supported private access path |
+
+## Quick Start
 
 Requires Node 18+.
 
 ```bash
+npm install
 npm start
 ```
 
-Open `http://localhost:4173`.
+Open:
 
-Seed the demo cards:
+```text
+http://localhost:4173
+```
+
+Seed the demo feed:
 
 ```bash
 npm run seed
 ```
 
-Simulate a richer Hermes-like agent feed:
+Generate a richer Hermes-style simulation:
 
 ```bash
 npm run simulate
 ```
 
-Simulate edge cases and intentionally bad payloads:
+Run the basic verification path:
 
 ```bash
-npm run simulate:edge
+node --check server.js
+node --check app.js
+node --check cli/agent-cards.js
+npm run seed
+npm run list
+curl http://localhost:4173/api/version
 ```
 
-## Agent CLI
+## Freshness Contract
+
+Before an agent claims Sipher is "latest", it must verify the exact URL it is showing:
+
+```bash
+curl "$AGENT_CARDS_URL/api/version"
+```
+
+If `AGENT_CARDS_URL` is unset, use the browser URL itself. Do not verify `localhost` and then show a Tailscale/IP URL.
+
+`/api/version` returns:
+
+```json
+{
+  "app": "agent-cards",
+  "currentVersion": "0.1.0",
+  "sourceId": "0.1.0+ae254a4.dirty",
+  "latest": true,
+  "updateAvailable": false,
+  "stale": false,
+  "canonicalUrl": "https://machine.tailnet.ts.net",
+  "requestUrl": "https://machine.tailnet.ts.net",
+  "servedFrom": "/path/to/sipher.oc",
+  "serverStartedAt": "2026-05-13T12:00:00.000Z",
+  "git": {
+    "branch": "main",
+    "shortCommit": "ae254a4",
+    "dirty": true,
+    "upstream": "origin/main",
+    "behind": 0
+  }
+}
+```
+
+Agent rules:
+
+- `latest: true` means the exact URL is serving the current known checkout.
+- `stale: true` means the URL is not canonical. Do not call it latest.
+- `updateAvailable: true` means the package version or git checkout is behind.
+- Missing `/api/version`, `404`, or invalid JSON means the instance is stale or not Sipher.
+- `git.dirty: true` means "latest local working tree", not "latest committed version".
+
+Configure the canonical private URL when exposing Sipher through Tailscale:
+
+```bash
+AGENT_CARDS_CANONICAL_URL="https://<machine-name>.<tailnet-name>.ts.net" npm start
+```
+
+## Private Access With Tailscale
+
+Use Tailscale Serve when Sipher should be available from your phone, tablet, or another tailnet-connected machine.
+
+```bash
+npm start
+tailscale serve --bg 4173
+tailscale serve status
+```
+
+Set the printed HTTPS URL for agents:
+
+```bash
+export AGENT_CARDS_URL="https://<machine-name>.<tailnet-name>.ts.net"
+export AGENT_CARDS_CANONICAL_URL="$AGENT_CARDS_URL"
+```
+
+Operational rule: keep Tailscale Funnel off until Sipher has app-level authentication and action protection.
+
+## CLI
 
 ```bash
 node cli/agent-cards.js seed
@@ -53,7 +143,7 @@ Set `AGENT_CARDS_URL` when the API is not on `http://localhost:4173`.
 
 ## HTTP API
 
-### Create a card
+Create a card:
 
 ```bash
 curl -X POST http://localhost:4173/api/cards \
@@ -61,21 +151,19 @@ curl -X POST http://localhost:4173/api/cards \
   -d @examples/approval-card.json
 ```
 
-### List cards and events
+List cards and events:
 
 ```bash
 curl http://localhost:4173/api/cards
 ```
 
-### Update a card
+Check freshness:
 
 ```bash
-curl -X PATCH http://localhost:4173/api/cards/<card-id> \
-  -H 'content-type: application/json' \
-  -d '{"status":"in_progress","progress":75}'
+curl http://localhost:4173/api/version
 ```
 
-### Record a user or agent action
+Record an action:
 
 ```bash
 curl -X POST http://localhost:4173/api/cards/<card-id>/actions \
@@ -83,9 +171,9 @@ curl -X POST http://localhost:4173/api/cards/<card-id>/actions \
   -d '{"action":"approve","payload":{"source":"cli"}}'
 ```
 
-If a card includes `callbackUrl`, Agent Cards posts `{ card, event }` to that URL after an action is recorded.
+If a card includes `callbackUrl`, Sipher posts `{ card, event }` after an action is recorded.
 
-## Card schema
+## Card Schema
 
 Core fields:
 
@@ -95,7 +183,7 @@ Core fields:
 - `details`: optional deeper review context
 - `priority`: `low`, `medium`, or `high`
 - `project`: grouping label
-- `agent`: `{ "id": "hermes", "name": "Hermes" }`
+- `agent`: `{ "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" }`
 - `actions`: buttons such as approve, reject, edit, send, investigate
 - `options`: choice-card options
 - `input`: question-card input metadata
@@ -103,20 +191,35 @@ Core fields:
 - `callbackUrl`: optional webhook for structured feedback events
 - `metadata`: agent-owned structured context
 
-For approval cards, use `metadata.draft`, `metadata.risks`, `metadata.attachments`, or `metadata.sections` so the detail panel can show what is being approved.
+Approval cards must be reviewable. If an agent asks you to approve an email, file change, command, purchase, publish action, or scheduling action, it must include the exact content being approved in `details` or `metadata`.
 
-## MVP scope implemented
+See [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md) for payload examples and lifecycle rules.
+
+## Implemented MVP
 
 - Mobile-first PWA-style web app
 - Needs Me, Today, Projects, Archive views
-- Approval, choice, question, status, and briefing cards
-- Tap actions and option selection
-- Text answers for question cards
-- Local JSON persistence
+- Approval, choice, question, status, briefing, and comparison cards
+- Tap actions, option selection, and text answers
+- Local JSON persistence in `data/agent-cards.json`
 - Structured event history
 - Callback webhook hook
-- Agent CLI and example payloads
+- Agent CLI, examples, and simulation fixtures
+- Version/freshness metadata for agent verification
 
-## Notes
+## Project Shape
 
-This is intentionally single-user and local-first. It avoids arbitrary agent-generated UI: agents provide structured content and actions, while Agent Cards controls layout, lifecycle, and interaction patterns.
+```text
+index.html                  App shell
+style.css                   Responsive product UI
+app.js                      Browser state, rendering, and interactions
+server.js                   Dependency-free Node HTTP API and static server
+cli/agent-cards.js          Agent-facing CLI
+examples/*.json             Example card payloads
+simulations/*.json          Realistic and edge-case agent fixtures
+AGENT_INTEGRATION.md        Contract agents must follow
+```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
