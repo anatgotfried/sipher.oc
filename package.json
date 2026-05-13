@@ -2,6 +2,7 @@
   "name": "agent-cards",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "A local visual action feed for AI agents.",
   "scripts": {
     "start": "node server.js",
