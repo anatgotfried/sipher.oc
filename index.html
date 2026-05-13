@@ -20,20 +20,9 @@
           <h1>Agent Cards</h1>
         </div>
         <div class="topbar-actions">
-          <div class="version-menu">
-            <button id="version-button" class="version-button" type="button" aria-expanded="false" aria-controls="version-popover">
-              <span id="version-label">v...</span>
-              <strong id="version-state">Checking</strong>
-            </button>
-            <div id="version-popover" class="version-popover" hidden>
-              <button class="version-close" type="button" data-version-close aria-label="Close version details">×</button>
-              <div>
-                <h2 id="version-title">Version</h2>
-                <p id="version-copy">Checking for updates.</p>
-              </div>
-              <code id="version-command">npm start</code>
-              <a id="version-link" href="#" hidden>Open release</a>
-            </div>
+          <div id="version-pill" class="version-button" aria-label="Installed version">
+            <span id="version-label">v...</span>
+            <strong id="version-state">Checking</strong>
           </div>
           <div class="server-pill" title="Local API status">
             <span class="status-dot"></span>
@@ -84,7 +73,6 @@
                 <option value="comparison">Comparison</option>
               </select>
               <button id="seed-demo" class="ghost-button" type="button">Seed demo</button>
-              <button id="reset-cards" class="ghost-button reset-button" type="button">Reset</button>
             </div>
           </div>
 

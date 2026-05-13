@@ -7,7 +7,8 @@ const state = {
   detailOpen: false,
   pendingAction: null,
   version: null,
-  versionOpen: false,
+  swipe: null,
+  suppressClickUntil: 0,
   justHandled: new Set()
 };
 
@@ -250,14 +251,9 @@ async function load() {
 
 function renderVersion() {
   const version = state.version;
-  const button = $("#version-button");
+  const button = $("#version-pill");
   const label = $("#version-label");
   const stateLabel = $("#version-state");
-  const popover = $("#version-popover");
-  const title = $("#version-title");
-  const copy = $("#version-copy");
-  const command = $("#version-command");
-  const link = $("#version-link");
   const banner = $("#freshness-banner");
   const bannerTitle = $("#freshness-title");
   const bannerCopy = $("#freshness-copy");
@@ -267,7 +263,6 @@ function renderVersion() {
     stateLabel.textContent = "Checking";
     button.classList.remove("has-update");
     button.classList.remove("is-stale");
-    popover.hidden = true;
     banner.hidden = false;
     bannerTitle.textContent = "Version check unavailable";
     bannerCopy.textContent = "Do not claim this instance is latest until this URL returns /api/version.";
@@ -277,51 +272,16 @@ function renderVersion() {
   const stale = Boolean(version.stale);
   const updateAvailable = Boolean(version.updateAvailable);
   const git = version.git || {};
-  const dirty = Boolean(git.dirty);
-  const reasons = version.staleReasons || [];
-  const needsAttention = stale || updateAvailable;
 
   label.textContent = `v${version.currentVersion}`;
   stateLabel.textContent = stale ? "Stale" : updateAvailable ? "Update" : "Current";
   button.classList.toggle("has-update", Boolean(version.updateAvailable));
   button.classList.toggle("is-stale", stale);
-  button.setAttribute("aria-expanded", String(state.versionOpen));
-  popover.hidden = !state.versionOpen || !needsAttention;
   banner.hidden = !stale && !updateAvailable;
   bannerTitle.textContent = stale ? "Stale URL" : "Update available";
   bannerCopy.textContent = stale
     ? `This page was opened from ${version.requestUrl || "a non-canonical URL"}. Use ${version.canonicalUrl || "the canonical Agent Cards URL"} before claiming it is latest.`
     : `This checkout is behind ${git.upstream || "the configured latest source"}. Run the update command and restart Agent Cards.`;
-
-  title.textContent = stale
-    ? "This is not the canonical Agent Cards URL"
-    : updateAvailable
-    ? `Update available: v${version.latestVersion}`
-    : dirty
-    ? "Agent Cards has local changes"
-    : "Agent Cards is current";
-  copy.textContent = stale
-    ? `Agents must verify /api/version on the exact URL they show. Canonical URL: ${version.canonicalUrl || "not configured"}.`
-    : updateAvailable
-    ? "A newer version is available. Run the update command from the project folder, then restart Agent Cards."
-    : dirty
-    ? `Running local uncommitted changes from ${version.servedFrom}.`
-    : `Running ${version.sourceId || `v${version.currentVersion}`}.`;
-  command.textContent = stale || updateAvailable
-    ? version.updateCommand || "git pull && npm install"
-    : `Running ${version.sourceId || `v${version.currentVersion}`}`;
-
-  if (reasons.length) {
-    command.textContent = `${command.textContent}\nreason: ${reasons.join(", ")}`;
-  }
-
-  if (version.updateUrl) {
-    link.hidden = false;
-    link.href = version.updateUrl;
-  } else {
-    link.hidden = true;
-    link.removeAttribute("href");
-  }
 }
 
 async function respond(cardId, action, payload = {}) {
@@ -358,18 +318,6 @@ async function updateCard(cardId, patch) {
 
 async function seedDemo() {
   await api("/api/demo/seed", { method: "POST" });
-  await load();
-}
-
-async function resetCards() {
-  const confirmed = confirm("Reset all local cards and event history? This cannot be undone.");
-  if (!confirmed) return;
-  await api("/api/cards/reset", { method: "POST" });
-  state.cards = [];
-  state.events = [];
-  state.selectedId = null;
-  state.detailOpen = false;
-  state.justHandled.clear();
   await load();
 }
 
@@ -680,7 +628,28 @@ function renderReviewPayload(card) {
   return `${draftHtml}${risksHtml}${attachmentsHtml}${sectionsHtml}${rawMetadataHtml}`;
 }
 
+function canSwipeArchive(card) {
+  return card && card.status !== "archived" && card.status !== "expired";
+}
+
+function interactiveTarget(target) {
+  return target.closest("button, a, input, textarea, select, option, [role='button'], summary");
+}
+
+function resetSwipeNode(node) {
+  if (!node) return;
+  node.classList.remove("is-swiping", "swipe-archive-ready");
+  node.style.transform = "";
+  node.style.opacity = "";
+}
+
 document.addEventListener("click", async (event) => {
+  if (Date.now() < state.suppressClickUntil) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
   const actionButton = event.target.closest("[data-action][data-card-id]");
   if (actionButton) {
     event.stopPropagation();
@@ -711,27 +680,6 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
-  if (event.target.closest("#version-button")) {
-    const version = state.version;
-    const needsAttention = Boolean(version?.stale || version?.updateAvailable);
-    if (!needsAttention) return;
-    state.versionOpen = !state.versionOpen;
-    renderVersion();
-    return;
-  }
-
-  if (event.target.closest("[data-version-close]")) {
-    state.versionOpen = false;
-    renderVersion();
-    return;
-  }
-
-  if (state.versionOpen && !event.target.closest(".version-menu")) {
-    state.versionOpen = false;
-    renderVersion();
-    return;
-  }
-
   const cardNode = event.target.closest(".card[data-card-id]");
   if (cardNode) {
     const card = state.cards.find((item) => item.id === cardNode.dataset.cardId);
@@ -754,6 +702,68 @@ document.addEventListener("click", async (event) => {
   if (!event.target.closest("[data-action][data-card-id]")) return;
 });
 
+document.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  if (interactiveTarget(event.target)) return;
+  const node = event.target.closest(".card[data-card-id]");
+  if (!node) return;
+  const card = state.cards.find((item) => item.id === node.dataset.cardId);
+  if (!canSwipeArchive(card) || state.pendingAction) return;
+  state.swipe = {
+    pointerId: event.pointerId,
+    node,
+    cardId: card.id,
+    startX: event.clientX,
+    startY: event.clientY,
+    dx: 0,
+    dy: 0,
+    active: false
+  };
+  node.setPointerCapture?.(event.pointerId);
+});
+
+document.addEventListener("pointermove", (event) => {
+  const swipe = state.swipe;
+  if (!swipe || swipe.pointerId !== event.pointerId) return;
+  swipe.dx = event.clientX - swipe.startX;
+  swipe.dy = event.clientY - swipe.startY;
+  const horizontal = Math.abs(swipe.dx) > 14 && Math.abs(swipe.dx) > Math.abs(swipe.dy) * 1.25;
+  if (!horizontal && !swipe.active) return;
+  swipe.active = true;
+  event.preventDefault();
+  const clamped = Math.max(-150, Math.min(150, swipe.dx));
+  swipe.node.classList.add("is-swiping");
+  swipe.node.classList.toggle("swipe-archive-ready", Math.abs(swipe.dx) > 96);
+  swipe.node.style.transform = `translateX(${clamped}px) rotate(${clamped / 32}deg)`;
+  swipe.node.style.opacity = String(Math.max(0.55, 1 - Math.abs(clamped) / 260));
+});
+
+document.addEventListener("pointerup", async (event) => {
+  const swipe = state.swipe;
+  if (!swipe || swipe.pointerId !== event.pointerId) return;
+  state.swipe = null;
+  swipe.node.releasePointerCapture?.(event.pointerId);
+
+  const shouldArchive = swipe.active && Math.abs(swipe.dx) > 96 && Math.abs(swipe.dx) > Math.abs(swipe.dy) * 1.25;
+  if (!shouldArchive) {
+    resetSwipeNode(swipe.node);
+    return;
+  }
+
+  state.suppressClickUntil = Date.now() + 450;
+  swipe.node.classList.add("swipe-archive-ready");
+  swipe.node.style.transform = `translateX(${swipe.dx > 0 ? 120 : -120}%) rotate(${swipe.dx > 0 ? 8 : -8}deg)`;
+  swipe.node.style.opacity = "0";
+  await respond(swipe.cardId, "archive", { source: "swipe" });
+});
+
+document.addEventListener("pointercancel", (event) => {
+  const swipe = state.swipe;
+  if (!swipe || swipe.pointerId !== event.pointerId) return;
+  state.swipe = null;
+  resetSwipeNode(swipe.node);
+});
+
 document.addEventListener("submit", async (event) => {
   const form = event.target.closest("[data-question-form]");
   if (!form) return;
@@ -766,19 +776,12 @@ document.addEventListener("submit", async (event) => {
   await respond(cardId, "answer", { answer });
 });
 
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || !state.versionOpen) return;
-  state.versionOpen = false;
-  renderVersion();
-});
-
 $("#type-filter").addEventListener("change", (event) => {
   state.type = event.target.value;
   render();
 });
 
 $("#seed-demo").addEventListener("click", seedDemo);
-$("#reset-cards").addEventListener("click", resetCards);
 
 load();
 setInterval(load, 10000);

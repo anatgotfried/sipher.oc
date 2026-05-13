@@ -106,10 +106,6 @@ h1 {
   gap: 8px;
 }
 
-.version-menu {
-  position: relative;
-}
-
 .version-button {
   display: inline-flex;
   align-items: center;
@@ -154,77 +150,6 @@ h1 {
 .version-button.is-stale strong {
   background: rgba(255, 59, 48, 0.12);
   color: var(--red);
-}
-
-.version-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 40;
-  width: min(320px, calc(100vw - 32px));
-  display: grid;
-  gap: 12px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 14px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.14);
-  backdrop-filter: blur(24px) saturate(180%);
-}
-
-.version-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 20px;
-  line-height: 1;
-}
-
-.version-close:hover {
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
-.version-popover h2 {
-  padding-right: 26px;
-  margin-bottom: 4px;
-  font-size: 15px;
-  line-height: 1.2;
-  font-weight: 760;
-}
-
-.version-popover p {
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.38;
-}
-
-.version-popover code {
-  display: block;
-  overflow-x: auto;
-  border: 1px solid var(--separator);
-  border-radius: 10px;
-  background: var(--surface-muted);
-  padding: 10px;
-  color: #111827;
-  font: 12px/1.45 ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  white-space: pre;
-}
-
-.version-popover a {
-  color: var(--blue);
-  font-size: 13px;
-  font-weight: 720;
-  text-decoration: none;
 }
 
 .server-pill {
@@ -434,10 +359,6 @@ select,
   background: #ffffff;
 }
 
-.reset-button {
-  color: var(--red);
-}
-
 .ui-icon {
   width: 16px;
   height: 16px;
@@ -480,7 +401,19 @@ span.ui-icon[data-icon="archive"] {
   background: rgba(255, 255, 255, 0.94);
   padding: 14px;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 10px 28px rgba(0, 0, 0, 0.04);
+  touch-action: pan-y;
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.card.is-swiping {
+  cursor: grabbing;
+  transition: none;
+  will-change: transform, opacity;
+}
+
+.card.swipe-archive-ready {
+  border-color: rgba(255, 149, 0, 0.34);
+  background: rgba(255, 249, 235, 0.96);
 }
 
 .card::before {
@@ -1360,10 +1293,6 @@ button:disabled {
     display: none;
   }
 
-  .version-popover {
-    right: -69px;
-  }
-
   .server-pill {
     padding: 7px 10px;
   }
@@ -1410,7 +1339,7 @@ button:disabled {
 
   .toolbar {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
   }
 
   .card {

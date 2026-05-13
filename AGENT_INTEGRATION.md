@@ -121,6 +121,8 @@ Reset the local feed when examples or test cards pile up:
 node cli/agent-cards.js reset --yes
 ```
 
+Reset is for agents/operators, not a normal user workflow. Users should clear individual cards by archiving them.
+
 ## Multi-Agent Feed Pattern
 
 Sipher is one shared human action feed. Multiple agents can write cards into it as long as each card has a stable owner and a clear next step.
@@ -360,5 +362,6 @@ Question cards should include the exact expected answer format.
 
 - Tapping a card opens its detail panel.
 - Action buttons record structured events.
+- Swiping a card sideways archives it.
 - Cards that have just been handled stay visible briefly in the current session so the result does not feel like it vanished.
 - Archive intentionally removes the card from Needs Me.

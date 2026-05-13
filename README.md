@@ -150,6 +150,8 @@ node cli/agent-cards.js create examples/deploy-approval-card.json
 node cli/agent-cards.js action demo_send_email send
 ```
 
+Reset is intentionally an agent/operator command, not a primary user control in the UI.
+
 Set `AGENT_CARDS_URL` when the API is not on `http://localhost:4173`.
 
 ## HTTP API
