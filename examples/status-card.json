@@ -1,0 +1,26 @@
+{
+  "type": "status",
+  "title": "Deployment status",
+  "summary": "The deploy agent finished the build and is waiting for a production promotion decision.",
+  "details": "Preview passed smoke checks. Promote only after reviewing the release note.",
+  "priority": "low",
+  "project": "Website",
+  "agent": {
+    "id": "deploy-agent",
+    "name": "Deploy Agent"
+  },
+  "progress": 86,
+  "blocker": "Waiting for promotion approval",
+  "actions": [
+    {
+      "id": "approve",
+      "label": "Promote",
+      "style": "primary"
+    },
+    {
+      "id": "reject",
+      "label": "Hold",
+      "style": "danger"
+    }
+  ]
+}

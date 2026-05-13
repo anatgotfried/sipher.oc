@@ -1,0 +1,32 @@
+{
+  "type": "approval",
+  "title": "Send this email?",
+  "summary": "Hermes drafted an outreach email to a contractor lead.",
+  "details": "The message will be sent externally. Review the full draft before approving.",
+  "priority": "high",
+  "project": "Contractor outreach",
+  "agent": {
+    "id": "hermes",
+    "name": "Hermes"
+  },
+  "actions": [
+    {
+      "id": "send",
+      "label": "Send",
+      "style": "primary"
+    },
+    {
+      "id": "edit",
+      "label": "Edit",
+      "style": "neutral"
+    },
+    {
+      "id": "reject",
+      "label": "Reject",
+      "style": "danger"
+    }
+  ],
+  "metadata": {
+    "draftSubject": "Availability for a small build project"
+  }
+}

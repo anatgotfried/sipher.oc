@@ -1,0 +1,16 @@
+{
+  "type": "question",
+  "title": "What budget should I assume?",
+  "summary": "OpenClaw needs a budget ceiling before comparing hosting options.",
+  "details": "A short answer is enough. Example: under $25/month unless traffic spikes.",
+  "priority": "medium",
+  "project": "Agent Cards",
+  "agent": {
+    "id": "openclaw",
+    "name": "OpenClaw"
+  },
+  "input": {
+    "kind": "short_text",
+    "placeholder": "Budget ceiling"
+  }
+}

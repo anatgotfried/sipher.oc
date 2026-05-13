@@ -1,0 +1,983 @@
+Agent Cards PRD
+
+Working Description
+
+Agent Cards lets your AI agents ask, show, and act through beautiful cards you can tap or swipe.
+
+Agent Cards is an open-source visual action feed for AI agents. Agents send cards. Humans tap, swipe, approve, reject, choose, answer, edit, or ask for more. The agent receives structured feedback and continues working.
+
+⸻
+
+1. Product Overview
+
+Product Name
+
+Agent Cards
+
+Product Category
+
+Open-source human-agent interaction layer.
+
+More specifically:
+
+* Visual action feed for AI agents
+* Card-based approval and feedback interface
+* Mobile-first companion interface for personal/local agents
+* Structured human feedback system for agent workflows
+
+One-Line Pitch
+
+Agent Cards lets your AI agents ask, show, and act through beautiful cards you can tap or swipe.
+
+Longer Pitch
+
+AI agents are becoming capable of doing real work, but the human interface is still mostly chat. Chat is good for conversation, but bad for repeated decisions, approvals, comparisons, and quick feedback. Agent Cards gives agents a structured visual action layer: agents send cards, users tap or swipe, and the agent receives clean feedback it can act on.
+
+Product Thesis
+
+The next generation of personal agents needs more than chat. Agents need a visual, structured, trustworthy way to ask humans for input and show progress. Users need to review and guide agents quickly, without reading endless walls of text.
+
+Agent Cards provides that missing layer.
+
+⸻
+
+2. Problem Statement
+
+People using personal AI agents are stuck in text-heavy interfaces.
+
+Agents can research, summarize, automate, plan, compare, and execute tasks, but the user experience is usually a text thread. This creates friction when the agent needs to show options, request approval, ask clarifying questions, or present status.
+
+Core Problems
+
+2.1 Too much text
+
+Agents often explain everything in long paragraphs, even when the user only needs to choose, approve, reject, or compare.
+
+2.2 Chat is bad for repeated decisions
+
+Chat works for conversation, but it is inefficient for recurring structured decisions like:
+
+* “Which option do you prefer?”
+* “Should I continue?”
+* “Approve this action?”
+* “Which version looks better?”
+* “Do you want more like this?”
+
+2.3 Low trust for agent actions
+
+As agents become more capable, they increasingly want to do consequential things: send emails, change files, publish content, alter campaigns, spend money, schedule meetings, or modify infrastructure. Users need a clear, reviewable approval surface.
+
+2.4 No persistent visual state
+
+Important agent outputs disappear into conversation history. Users lack a clean place to see what agents are waiting on, what has been approved, what is blocked, and what needs attention.
+
+2.5 Messy feedback loop
+
+When users respond in natural language, agents must infer intent. A tap, swipe, selection, or explicit approval gives the agent cleaner structured feedback.
+
+⸻
+
+3. Target Users
+
+Initial Target User
+
+Technical or semi-technical people running personal or small-team AI agents.
+
+Examples:
+
+* OpenClaw users
+* Hermes users
+* n8n automation users
+* Claude Code / Cursor agent users
+* LangGraph / CrewAI users
+* MCP users
+* Indie hackers building agent workflows
+* AI automation builders
+* People building personal chief-of-staff agents
+
+Not the Initial User
+
+Agent Cards is not initially for mainstream consumers who have never set up an automation, agent, webhook, or local tool. The first version should assume users are willing to run a local/self-hosted app or connect an agent through simple setup steps.
+
+Early Adopter Profile
+
+The first successful user likely has:
+
+* At least one agent or automation already running
+* A desire for mobile visibility into agent work
+* A need to approve, reject, or guide agent decisions
+* Frustration with chat-only workflows
+* Comfort with basic technical setup
+
+⸻
+
+4. Product Positioning
+
+Primary Positioning
+
+Agent Cards is a visual action feed for AI agents.
+
+Agents send structured cards into a user-facing feed. The user can tap, swipe, approve, reject, choose, edit, or answer. The feedback returns to the agent as structured data.
+
+Secondary Positioning
+
+* A mobile control surface for personal agents
+* A human-in-the-loop interface for agent workflows
+* An approval inbox for AI agents
+* A structured feedback layer for agent systems
+* A card-based alternative to endless agent chat
+
+What It Is Not
+
+Agent Cards is not:
+
+* A general dashboard builder
+* A marketplace-first product
+* A native mobile app first
+* A replacement for chat
+* A full agent framework
+* A place where agents generate arbitrary unsafe UI
+* A consumer AI assistant
+
+⸻
+
+5. Core Product Promise
+
+Agent Cards gives agents a way to say:
+
+* “Here are your options.”
+* “Pick one.”
+* “Approve this.”
+* “I need this information.”
+* “Here is what I found.”
+* “Here is the current status.”
+* “Swipe to teach me your preference.”
+* “Tap to continue.”
+
+The user gets a beautiful visual interface instead of a wall of text.
+
+⸻
+
+6. Core UX Metaphor
+
+The product is a cross between:
+
+* An inbox
+* A card feed
+* An approval queue
+* A lightweight dashboard
+* A preference training interface
+
+The best first framing is:
+
+A visual action feed for your AI agents.
+
+Main Navigation Concept
+
+The app should be organized around action and attention, not around technical agent details.
+
+Recommended top-level sections:
+
+1. Needs Me
+    Cards requiring user input.
+2. Today
+    Recent cards, briefings, updates, and active workflows.
+3. Projects
+    Cards grouped by project, agent, or workflow.
+4. Archive
+    Completed, dismissed, expired, and historical cards.
+
+⸻
+
+7. MVP Scope
+
+MVP Definition
+
+A single-user, self-hostable, mobile-friendly web/PWA app where agents can send visual cards to a user, and the user can respond through taps, swipes, buttons, or simple inputs. User actions are sent back to the agent as structured feedback.
+
+MVP Goals
+
+The MVP should prove that:
+
+1. Agents can send useful visual cards.
+2. Users prefer tapping/swiping/selecting over replying in chat for certain interactions.
+3. Agents benefit from structured feedback.
+4. The system can support real human-in-the-loop agent workflows.
+5. The product feels useful with only a small number of card types.
+
+MVP Includes
+
+* Single-user web/PWA interface
+* Mobile-first responsive design
+* Agent-created cards
+* Card feed
+* Tap actions
+* Swipe actions
+* Simple text input actions
+* Approval cards
+* Choice cards
+* Question cards
+* Status cards
+* Briefing cards
+* Card lifecycle states
+* Basic agent identity
+* Basic callback mechanism
+* Archive/history
+* Simple local/self-hosted setup
+
+MVP Does Not Include
+
+* Marketplace
+* Paid card templates
+* Native iOS app
+* Native Android app
+* Team workspaces
+* Multi-user approval chains
+* Arbitrary agent-generated UI
+* Full plugin ecosystem
+* Complex permissions system
+* Social sharing
+* Public card store
+* Heavy analytics
+* Enterprise admin panel
+
+⸻
+
+8. Non-Goals
+
+The first version should deliberately avoid becoming too broad.
+
+Non-Goal: Arbitrary UI Generation
+
+Agents should not create any layout they want. This would create inconsistency, security issues, poor UX, and unreliable rendering.
+
+Agents should provide content, options, actions, priority, and context. Agent Cards should control layout, gestures, accessibility, safety confirmations, and visual consistency.
+
+Non-Goal: Marketplace
+
+A marketplace may be valuable later, but only after the core card interaction model works. The first version should focus on proving that agents and users benefit from card-based interaction.
+
+Non-Goal: Full Dashboard Builder
+
+Dashboards become heavy and static. The MVP should prioritize a live action feed where cards require attention, feedback, or review.
+
+Non-Goal: Replacing Chat
+
+Agent Cards complements chat. Chat remains useful for open-ended conversation. Cards are better for structured actions, decisions, approvals, comparisons, and updates.
+
+⸻
+
+9. Product Principles
+
+9.1 Structured, not arbitrary
+
+Agents should send structured card requests, not arbitrary UI. The system should preserve visual consistency and safety.
+
+9.2 Fast human feedback
+
+Every card should make it obvious what the user can do next.
+
+9.3 Beautiful by default
+
+Users should not need the agent to be a designer. Cards should look polished through the platform’s default components.
+
+9.4 Mobile-first
+
+The most natural use case is checking cards on a phone. Desktop support matters, but mobile should lead.
+
+9.5 Human control
+
+Cards should increase trust by making agent actions reviewable, interruptible, and easy to approve or reject.
+
+9.6 Agent-agnostic
+
+The system should not be tied to one agent framework. It should work with local agents, webhooks, CLIs, MCP servers, automation tools, and future adapters.
+
+9.7 Reduce text, do not eliminate context
+
+Cards should avoid walls of text, but users must still be able to inspect enough detail to make good decisions.
+
+⸻
+
+10. User Stories
+
+10.1 Approval
+
+As a user, I want my agent to show me a clear approval card before it takes an important action, so I can approve, reject, or edit the action quickly.
+
+10.2 Preference
+
+As a user, I want to swipe through options my agent found, so the agent can quickly learn what I like and refine the results.
+
+10.3 Clarification
+
+As an agent user, I want my agent to ask missing questions through simple cards, so I can answer without typing a long message.
+
+10.4 Project Status
+
+As a user running multiple agents, I want to see which projects need me, which are blocked, and which are progressing.
+
+10.5 Morning Brief
+
+As a user, I want agents to send a concise morning card stack with the things I need to know and act on.
+
+10.6 Agent Debugging
+
+As a technical user, I want to see what an agent is asking, what I answered, and what happened next.
+
+10.7 Archive
+
+As a user, I want completed cards to move out of the active feed but remain available for later review.
+
+⸻
+
+11. Card Interaction Model
+
+Core Interaction Types
+
+Cards may support:
+
+* Tap
+* Swipe left
+* Swipe right
+* Swipe up
+* Button actions
+* Text input
+* Multiple choice
+* Edit before approval
+* Dismiss/archive
+* Refresh
+* Ask for more
+* Pin/save
+
+Recommended Swipe Semantics
+
+Swipe semantics should be visible and card-specific. Do not assume all cards use the same gestures.
+
+Common patterns:
+
+* Swipe right: like / approve / yes
+* Swipe left: pass / reject / no
+* Swipe up: save / more like this / shortlist
+* Swipe down: dismiss / archive
+
+Safety Rule for Serious Actions
+
+For high-stakes approvals, accidental swipes should not immediately trigger irreversible actions.
+
+Examples of high-stakes cards:
+
+* Send email
+* Spend money
+* Delete data
+* Publish public content
+* Change infrastructure
+* Modify ads/campaigns
+* Invite external people
+
+These should require buttons, confirmation, or an explicit review step.
+
+⸻
+
+12. Card Types for MVP
+
+12.1 Approval Card
+
+Used when the agent wants permission to do something.
+
+Use Cases
+
+* Send email
+* Publish post
+* Change a setting
+* Book meeting
+* Modify campaign
+* Run script
+* Delete/archive data
+
+Required UX
+
+* Clear title
+* Summary of proposed action
+* Risk/context details
+* Approve button
+* Reject button
+* Edit/request changes option
+* Optional detail expansion
+
+Example
+
+Title: “Send this email?”
+
+Body: “Hermes drafted an outreach email to a contractor lead.”
+
+Actions:
+
+* Send
+* Edit
+* Reject
+* Explain why
+
+12.2 Choice Card
+
+Used when the agent wants the user to choose between options.
+
+Use Cases
+
+* Pick destination
+* Pick vendor
+* Pick image
+* Pick tool
+* Pick restaurant
+* Pick campaign angle
+
+Required UX
+
+* One or more visual options
+* Images when available
+* Clear swipe/tap actions
+* Ability to inspect details
+* Ability to ask for more options
+
+Example
+
+Title: “Pick a weekend activity.”
+
+Actions:
+
+* Swipe right: like
+* Swipe left: pass
+* Swipe up: more like this
+* Tap: details
+
+12.3 Question Card
+
+Used when the agent needs missing information.
+
+Use Cases
+
+* “Which account is this for?”
+* “What budget should I assume?”
+* “What tone should I use?”
+* “Should I continue?”
+
+Input Types
+
+* Short text
+* Long text
+* Multiple choice
+* Slider
+* Date
+* Time
+* Number
+
+12.4 Status Card
+
+Used to show project, agent, or system status.
+
+Use Cases
+
+* Project status
+* Agent health
+* Google Ads status
+* Scraper status
+* Deployment status
+* Cron/automation status
+
+Required UX
+
+* Status label
+* Summary
+* Current blocker if any
+* Last updated timestamp
+* Next recommended action
+
+Actions
+
+* Investigate
+* Fix
+* Ignore
+* Escalate
+* Show details
+
+12.5 Briefing Card
+
+Used for compact summaries.
+
+Use Cases
+
+* Morning brief
+* Calendar summary
+* Gmail summary
+* Weather summary
+* Agent daily report
+* Family logistics
+
+Required UX
+
+* Dense but scannable layout
+* Multiple summary sections
+* Clear action items
+* Refresh option
+* Ask follow-up option
+
+12.6 Comparison Card
+
+Used for side-by-side decisions.
+
+Use Cases
+
+* Compare hotels
+* Compare GitHub repositories
+* Compare vendors
+* Compare campaign plans
+* Compare generated drafts
+
+Required UX
+
+* 2-4 options
+* Key comparison dimensions
+* Pros/cons or highlights
+* Choose/shortlist/pass actions
+
+⸻
+
+13. Card Lifecycle
+
+Every card should have a clear state.
+
+Suggested States
+
+* Draft
+* New
+* Waiting for user
+* Viewed
+* Responded
+* Approved
+* Rejected
+* Edited
+* In progress
+* Completed
+* Dismissed
+* Expired
+* Failed
+* Archived
+
+Lifecycle Example
+
+1. Agent creates card.
+2. Card appears in Needs Me or Today.
+3. User views card.
+4. User taps/swipes/responds.
+5. Agent receives structured event.
+6. Agent continues task.
+7. Agent updates card status.
+8. Card completes or archives.
+
+⸻
+
+14. Agent Behavior Rules
+
+Agents using Agent Cards should follow these rules.
+
+14.1 Use cards for structured moments
+
+Agents should use cards when asking for a decision, approval, comparison, quick preference, or missing input.
+
+14.2 Do not over-card
+
+Agents should not create cards for every minor message. The feed should remain useful, not noisy.
+
+14.3 Make cards actionable
+
+Each card should have a clear purpose and next step.
+
+14.4 Provide enough context
+
+Cards should be concise, but users must be able to inspect detail before approving consequential actions.
+
+14.5 Respect urgency
+
+Agents should mark cards with reasonable priority levels. High priority should be reserved for genuinely important issues.
+
+14.6 Close the loop
+
+After the user responds, the agent should update the card or create a completion/status card when appropriate.
+
+⸻
+
+15. User App Requirements
+
+15.1 Main Feed
+
+The app should show a feed of cards ordered by urgency, freshness, and status.
+
+15.2 Needs Me View
+
+A dedicated view should show only cards requiring user action.
+
+15.3 Card Detail View
+
+Users should be able to tap a card to inspect more context, metadata, history, and available actions.
+
+15.4 Swipe Interaction
+
+Swipeable cards should clearly show what each gesture means.
+
+15.5 Action Confirmation
+
+High-stakes actions should require confirmation.
+
+15.6 Archive
+
+Completed and dismissed cards should leave the active feed but remain available.
+
+15.7 Search/Filter
+
+MVP can include basic filtering by:
+
+* Agent
+* Project
+* Status
+* Card type
+
+Search can be deferred unless easy.
+
+15.8 Mobile-First UI
+
+The UI should feel like a polished mobile app even if implemented as a PWA.
+
+Design direction:
+
+* Clean cards
+* Rounded corners
+* Soft shadows
+* Clear typography
+* High contrast actions
+* Light/dark mode optional
+* Calm visual system
+* Minimal clutter
+
+⸻
+
+16. Agent Integration Requirements
+
+MVP Integration Surface
+
+The MVP should expose a simple way for agents to:
+
+1. Create a card.
+2. Update a card.
+3. Receive user actions.
+4. Mark a card complete/archived.
+
+Recommended MVP Integrations
+
+16.1 HTTP API
+
+Universal and simple. Any agent, script, or automation tool can use it.
+
+16.2 CLI
+
+Useful for local agents such as Hermes/OpenClaw and shell-based workflows.
+
+16.3 MCP Server
+
+Useful for modern agent frameworks. This can be included in MVP if feasible, but it should not block the basic HTTP/CLI flow.
+
+Integration Priority
+
+1. HTTP API
+2. CLI
+3. MCP server
+4. Framework-specific adapters
+5. Marketplace/plugin system
+
+⸻
+
+17. Trust, Safety, and Permissions
+
+Key Trust Principle
+
+Agent Cards sits between agents and human decisions. It must make agent actions more trustworthy, not less.
+
+MVP Safety Requirements
+
+* Agents should have identity.
+* Cards should show which agent created them.
+* Consequential actions should require explicit confirmation.
+* Users should be able to disable or mute an agent.
+* Users should be able to inspect card history.
+* Users should be able to archive/delete cards.
+* The system should avoid arbitrary agent-rendered UI.
+
+Future Permissions
+
+Later versions can support:
+
+* Per-agent permissions
+* Per-card-type permissions
+* Callback allowlists
+* Notification permissions
+* Team roles
+* Audit logs
+* Approval chains
+
+⸻
+
+18. Example Workflows
+
+18.1 Agent Approval Workflow
+
+1. Agent drafts an email.
+2. Agent creates an approval card.
+3. User opens card.
+4. User reviews summary and full draft.
+5. User taps Send, Edit, or Reject.
+6. Agent receives response.
+7. Agent sends email or revises draft.
+8. Card updates to completed.
+
+18.2 Trip Preference Workflow
+
+1. User asks agent to find weekend ideas.
+2. Agent researches options.
+3. Agent creates a swipeable choice card stack.
+4. User swipes right/left/up on options.
+5. Agent receives structured preferences.
+6. Agent refines results.
+7. Agent creates a second card with better options.
+
+18.3 Morning Brief Workflow
+
+1. Agent gathers calendar, weather, inbox, and project status.
+2. Agent creates a briefing card stack.
+3. User scans cards in Today view.
+4. User taps “Investigate” on one issue.
+5. Agent creates a follow-up status or approval card.
+
+18.4 Project Status Workflow
+
+1. Agent works on a project.
+2. Agent posts a status card.
+3. Card shows progress, blocker, next action.
+4. User taps “Fix this,” “Ignore,” or “Ask for details.”
+5. Agent continues based on user action.
+
+⸻
+
+19. Success Metrics
+
+MVP Product Metrics
+
+* Number of cards created per day/week
+* Percentage of cards receiving user action
+* Time from card creation to response
+* Percentage of agent workflows completed after card response
+* Number of cards archived/completed
+* Repeat usage over 7 days
+
+User Value Metrics
+
+* User reports less need to read long agent messages
+* User approves/rejects actions faster
+* User prefers cards over chat for structured decisions
+* User uses cards for at least one recurring workflow
+* User connects more than one agent/workflow
+
+Developer Adoption Metrics
+
+* Successful local setup rate
+* Time to first card
+* Number of example integrations used
+* Number of external contributors
+* Number of community-submitted card ideas
+
+⸻
+
+20. Build Phases
+
+Phase 0: Product Prototype
+
+Goal: Show the concept visually.
+
+Deliverables:
+
+* Static UI prototype
+* 5-6 card examples
+* Mobile feed concept
+* Basic product landing page copy
+
+Phase 1: MVP
+
+Goal: Make cards work end-to-end with one local agent or script.
+
+Deliverables:
+
+* Local/self-hosted web app
+* Card feed
+* Create/update card API
+* Tap/swipe actions
+* Callback events
+* Basic archive/history
+* Approval, choice, question, status, briefing cards
+* Example demo scripts
+
+Phase 2: Agent Integrations
+
+Goal: Make Agent Cards easy to connect to real agent systems.
+
+Deliverables:
+
+* CLI
+* MCP server
+* OpenClaw/Hermes example adapter
+* n8n example workflow
+* Documentation
+* Example morning brief and approval workflows
+
+Phase 3: Polish and Extensibility
+
+Goal: Make the system reusable and attractive to contributors.
+
+Deliverables:
+
+* Card schema package
+* React card components
+* Better permissions
+* Push notifications
+* Themes
+* More card types
+* Project grouping
+* Agent settings
+
+Phase 4: Ecosystem
+
+Goal: Expand beyond the initial self-hosted tool.
+
+Possible deliverables:
+
+* Hosted version
+* Team accounts
+* Card template library
+* Marketplace
+* Contributor docs
+* Public examples
+* Enterprise approval/audit features
+
+⸻
+
+21. First Demo Scenario
+
+The first demo should show two cards because together they explain the product.
+
+Demo Card 1: Approval Card
+
+Title: “Send this email?”
+
+Agent: Hermes
+
+Summary: “Hermes drafted an outreach email to a contractor lead.”
+
+Actions:
+
+* Send
+* Edit
+* Reject
+
+Why this matters:
+
+This demonstrates trust, human control, and agent action approval.
+
+Demo Card 2: Choice Card
+
+Title: “Pick a weekend idea.”
+
+Agent: Hermes
+
+Summary: “Hermes found 4 kid-friendly options within 90 minutes.”
+
+Actions:
+
+* Swipe right: like
+* Swipe left: pass
+* Swipe up: more like this
+* Tap: details
+
+Why this matters:
+
+This demonstrates visual preference feedback and swipe interaction.
+
+Together, these two cards explain Agent Cards in under 30 seconds.
+
+⸻
+
+22. Codex Build Guidance
+
+Codex should treat this as a product MVP, not a speculative framework.
+
+Build Priorities
+
+1. Make the user-facing card feed feel good.
+2. Make it easy for an agent/script to create a card.
+3. Make user responses flow back as structured events.
+4. Avoid overengineering marketplace/plugins.
+5. Keep the card system constrained and polished.
+
+Suggested Initial Implementation Direction
+
+Codex may choose the stack, but the first build should be simple and local/self-hostable.
+
+Recommended characteristics:
+
+* Web/PWA first
+* Mobile-first responsive UI
+* Simple local database
+* Simple API server
+* Example scripts to create demo cards
+* Minimal auth for local use
+* Clear documentation
+
+Acceptance Criteria for MVP
+
+A developer should be able to:
+
+1. Run Agent Cards locally.
+2. Open the mobile-friendly web app.
+3. Use an example script to create an approval card.
+4. See the card appear in the feed.
+5. Tap Approve/Reject/Edit.
+6. See the action recorded as a structured event.
+7. Use an example script to create a swipeable choice card.
+8. Swipe on options.
+9. See the swipe action recorded as structured feedback.
+10. Archive completed cards.
+
+⸻
+
+23. Open Questions
+
+These should be resolved after the first prototype, not before it.
+
+1. Should Agent Cards be PWA-only, or eventually native mobile?
+2. How much should cards persist versus behave like notifications?
+3. Should chat be embedded inside cards?
+4. Should each agent have a profile/avatar?
+5. Should the system support multiple users in v1?
+6. Should the marketplace be for card templates, agent workflows, or both?
+7. Should MCP be core or optional?
+8. How should push notifications work in self-hosted mode?
+9. How should high-stakes approvals be audited?
+10. What is the right boundary between card schema and agent freedom?
+
+⸻
+
+24. Summary
+
+Agent Cards is an open-source visual action feed for AI agents.
+
+It solves a real problem: personal agents are becoming useful, but their human interface is still mostly text. Users need a better way to review, approve, choose, guide, and respond.
+
+The MVP should focus on a small number of high-value card types, especially approval, choice, question, status, and briefing cards. It should be mobile-first, self-hostable, visually polished, and easy for local agents to integrate with.
+
+The long-term opportunity is to become the standard human interaction layer for personal and small-team agents.

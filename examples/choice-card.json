@@ -1,0 +1,46 @@
+{
+  "type": "choice",
+  "title": "Pick a weekend idea.",
+  "summary": "Hermes found 4 kid-friendly options within 90 minutes.",
+  "details": "Use this card to send structured preference feedback back to the agent.",
+  "priority": "medium",
+  "project": "Family logistics",
+  "agent": {
+    "id": "hermes",
+    "name": "Hermes"
+  },
+  "options": [
+    {
+      "id": "farm",
+      "title": "Morning farm visit",
+      "description": "Animals, shade, 42 min drive"
+    },
+    {
+      "id": "science",
+      "title": "Science museum",
+      "description": "Indoor, hands-on, near lunch"
+    },
+    {
+      "id": "forest",
+      "title": "Forest picnic",
+      "description": "Short trail and playground"
+    },
+    {
+      "id": "beach",
+      "title": "Sunset beach walk",
+      "description": "Low effort, best after 17:00"
+    }
+  ],
+  "actions": [
+    {
+      "id": "more_like_this",
+      "label": "More like this",
+      "style": "primary"
+    },
+    {
+      "id": "pass",
+      "label": "Pass",
+      "style": "neutral"
+    }
+  ]
+}

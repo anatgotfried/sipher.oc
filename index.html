@@ -1,109 +1,92 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="description" content="Agent Cards is a local visual action feed for AI agents.">
+    <title>Agent Cards</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyeline">Local action feed</p>
+          <h1>Agent Cards</h1>
+        </div>
+        <div class="server-pill" title="Local API status">
+          <span class="status-dot"></span>
+          <span id="api-status">Syncing</span>
+        </div>
+      </header>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>sipher.oc - Intelligent Digital Assistant</title>
-    <meta name="description"
-        content="sipher.oc - Your personal digital assistant for smart scheduling and task management. Optimize your workflow today.">
-    <meta name="robots" content="index, follow">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <style>
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-top: 4rem;
-            text-align: left;
-        }
+      <main class="main-grid">
+        <aside class="rail" aria-label="Agent Cards sections">
+          <button class="nav-item active" data-view="needs-me" type="button">
+            <span>Needs Me</span>
+            <strong id="needs-count">0</strong>
+          </button>
+          <button class="nav-item" data-view="today" type="button">
+            <span>Today</span>
+            <strong id="today-count">0</strong>
+          </button>
+          <button class="nav-item" data-view="projects" type="button">
+            <span>Projects</span>
+            <strong id="project-count">0</strong>
+          </button>
+          <button class="nav-item" data-view="archive" type="button">
+            <span>Archive</span>
+            <strong id="archive-count">0</strong>
+          </button>
+        </aside>
 
-        .feature-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 2rem;
-            border-radius: 16px;
-            transition: transform 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        .feature-title {
-            color: var(--accent-color);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-        }
-    </style>
-</head>
-
-<body>
-
-    <nav>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
-    </nav>
-
-    <div class="container">
-        <section class="hero">
-            <div class="glass-card" style="display: inline-block; padding: 4rem 6rem; max-width: 1000px;">
-                <h1>sipher.oc</h1>
-                <p style="font-size: 1.25rem; opacity: 0.9; letter-spacing: 0.02em; margin-bottom: 2rem; color: #fff;">
-                    Next-Gen Digital Assistant for Your Workflow
-                </p>
-                <p style="font-size: 1rem; opacity: 0.7; max-width: 600px; margin: 0 auto 3rem;">
-                    Automate your scheduling, organize your tasks, and reclaim your time with our intelligent
-                    productivity platform.
-                </p>
-
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-title">Smart Scheduling</div>
-                        <p style="font-size: 0.9rem; opacity: 0.7;">Seamlessly integrates with your calendar to optimize
-                            your daily agenda.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-title">Task Optimization</div>
-                        <p style="font-size: 0.9rem; opacity: 0.7;">Prioritize what matters most with intelligent task
-                            management algorithms.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-title">Secure & Private</div>
-                        <p style="font-size: 0.9rem; opacity: 0.7;">Your data is encrypted and used strictly to enhance
-                            your personal assistant experience.</p>
-                    </div>
-                </div>
-
-                <div style="margin-top: 4rem;">
-                    <a href="#" class="btn" style="pointer-events: none; opacity: 0.5; cursor: default;">Get Started</a>
-                </div>
+        <section class="feed-panel" aria-live="polite">
+          <div class="feed-header">
+            <div>
+              <h2 id="view-title">Needs Me</h2>
+              <p id="view-subtitle">Cards waiting for a decision, answer, or review.</p>
             </div>
+            <div class="toolbar">
+              <select id="type-filter" aria-label="Filter by card type">
+                <option value="all">All types</option>
+                <option value="approval">Approval</option>
+                <option value="choice">Choice</option>
+                <option value="question">Question</option>
+                <option value="status">Status</option>
+                <option value="briefing">Briefing</option>
+                <option value="comparison">Comparison</option>
+              </select>
+              <button id="seed-demo" class="ghost-button" type="button">Seed demo</button>
+            </div>
+          </div>
+
+          <div id="cards" class="cards"></div>
+          <div id="empty-state" class="empty-state" hidden>
+            <h3>No cards here</h3>
+            <p>Create one with the CLI or seed the demo cards.</p>
+          </div>
         </section>
+
+        <aside class="detail-panel" aria-label="Selected card details">
+          <div id="detail-empty" class="detail-empty">
+            <h2>Select a card</h2>
+            <p>Review metadata, history, and structured feedback events.</p>
+          </div>
+          <article id="detail-card" class="detail-card" hidden></article>
+        </aside>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Primary">
+        <button class="bottom-item active" data-view="needs-me" type="button">Needs Me</button>
+        <button class="bottom-item" data-view="today" type="button">Today</button>
+        <button class="bottom-item" data-view="projects" type="button">Projects</button>
+        <button class="bottom-item" data-view="archive" type="button">Archive</button>
+      </nav>
     </div>
 
-    <footer>
-        &copy; 2024 sipher.oc. All rights reserved. | <a href="mailto:support@sipher.site">Contact Support</a>
-    </footer>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const card = document.querySelector('.glass-card');
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'all 1s ease-out';
-
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 100);
-        });
-    </script>
-</body>
-
+    <script src="/app.js" type="module"></script>
+  </body>
 </html>
