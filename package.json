@@ -1,6 +1,6 @@
 {
   "name": "agent-cards",
-  "version": "0.1.0",
+  "version": "0.0.2",
   "private": true,
   "license": "MIT",
   "description": "A local visual action feed for AI agents.",
@@ -10,6 +10,7 @@
     "seed": "node cli/agent-cards.js seed",
     "simulate": "node cli/agent-cards.js simulate realistic",
     "simulate:edge": "node cli/agent-cards.js simulate edge",
+    "version:bump": "node scripts/bump-version.js",
     "create:approval": "node cli/agent-cards.js create examples/approval-card.json",
     "create:choice": "node cli/agent-cards.js create examples/choice-card.json",
     "list": "node cli/agent-cards.js list"

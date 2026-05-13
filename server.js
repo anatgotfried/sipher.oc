@@ -4,6 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { execFileSync } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const pkg = require("./package.json");
 
 const root = __dirname;
@@ -193,6 +194,29 @@ function gitMetadata() {
     ahead: Number(ahead) || 0,
     behind: Number(behind) || 0
   };
+}
+
+function runGit(args) {
+  return execFileSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+}
+
+function restartServerSoon() {
+  if (!process.argv[1]) return;
+  const env = { ...process.env };
+  setTimeout(() => {
+    const child = spawn(process.execPath, [process.argv[1]], {
+      cwd: root,
+      env,
+      detached: true,
+      stdio: "ignore"
+    });
+    child.unref();
+    process.exit(0);
+  }, 250);
 }
 
 function requestOrigin(req) {
@@ -417,6 +441,19 @@ async function handleApi(req, res, url) {
 
   if (req.method === "GET" && url.pathname === "/api/version") {
     return json(res, 200, versionPayload(req));
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/update") {
+    const before = gitMetadata();
+    if (before.dirty) {
+      return json(res, 409, { error: "dirty_worktree", message: "Commit or stash local changes before updating.", before });
+    }
+    runGit(["fetch", "origin"]);
+    const pulled = runGit(["pull", "--ff-only"]);
+    const after = gitMetadata();
+    const updated = before.commit !== after.commit;
+    if (updated) restartServerSoon();
+    return json(res, 200, { ok: true, updated, before, after, output: pulled });
   }
 
   if (req.method === "GET" && url.pathname === "/api/cards") {

@@ -190,6 +190,26 @@ h1 {
   font-weight: 780;
 }
 
+.freshness-banner span {
+  flex: 1 1 auto;
+}
+
+.update-button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  border: 1px solid rgba(104, 68, 0, 0.22);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #4f3300;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.update-button:disabled {
+  opacity: 0.64;
+}
+
 .status-dot,
 .risk-dot {
   display: inline-block;

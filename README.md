@@ -65,6 +65,14 @@ npm run list
 curl http://localhost:4173/api/version
 ```
 
+Versioning note: while Sipher is pre-release, package versions use `0.0.x`. Install the local pre-commit hook so each commit bumps the patch version automatically:
+
+```bash
+cp scripts/pre-commit-version.sh .git/hooks/pre-commit
+```
+
+When `/api/version` reports `updateAvailable: true`, the UI shows a yellow update bar with an `Update` button. The button runs a clean fast-forward update and restarts the local server process when possible.
+
 ## Freshness Contract
 
 Before an agent claims Sipher is "latest", it must verify the exact URL it is showing:

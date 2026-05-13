@@ -257,6 +257,7 @@ function renderVersion() {
   const banner = $("#freshness-banner");
   const bannerTitle = $("#freshness-title");
   const bannerCopy = $("#freshness-copy");
+  const updateButton = $("#update-app");
 
   if (!version) {
     label.textContent = "v...";
@@ -266,6 +267,7 @@ function renderVersion() {
     banner.hidden = false;
     bannerTitle.textContent = "Version check unavailable";
     bannerCopy.textContent = "Do not claim this instance is latest until this URL returns /api/version.";
+    updateButton.hidden = true;
     return;
   }
 
@@ -281,7 +283,28 @@ function renderVersion() {
   bannerTitle.textContent = stale ? "Stale URL" : "Update available";
   bannerCopy.textContent = stale
     ? `This page was opened from ${version.requestUrl || "a non-canonical URL"}. Use ${version.canonicalUrl || "the canonical Agent Cards URL"} before claiming it is latest.`
-    : `This checkout is behind ${git.upstream || "the configured latest source"}. Run the update command and restart Agent Cards.`;
+    : `This checkout is behind ${git.upstream || "origin/main"}. Latest known commit is ${(git.upstreamCommit || "").slice(0, 7) || "upstream"}.`;
+  updateButton.hidden = stale || !updateAvailable;
+  updateButton.disabled = false;
+  updateButton.textContent = "Update";
+}
+
+async function updateApp() {
+  const button = $("#update-app");
+  button.disabled = true;
+  button.textContent = "Updating...";
+  try {
+    const result = await api("/api/update", { method: "POST" });
+    button.textContent = result.updated ? "Restarting..." : "Already current";
+    setTimeout(load, result.updated ? 1600 : 400);
+  } catch (error) {
+    button.textContent = "Update failed";
+    $("#freshness-copy").textContent = error.message;
+    setTimeout(() => {
+      button.disabled = false;
+      button.textContent = "Update";
+    }, 1800);
+  }
 }
 
 async function respond(cardId, action, payload = {}) {
@@ -782,6 +805,7 @@ $("#type-filter").addEventListener("change", (event) => {
 });
 
 $("#seed-demo").addEventListener("click", seedDemo);
+$("#update-app").addEventListener("click", updateApp);
 
 load();
 setInterval(load, 10000);
