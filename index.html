@@ -1,111 +1,1206 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="description" content="Agent Cards is a local visual action feed for AI agents.">
-    <title>Agent Cards</title>
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/style.css">
-  </head>
-  <body>
-    <div id="app" class="app-shell">
-      <header class="topbar">
-        <div class="brand-lockup">
-          <span class="brand-mark" aria-hidden="true">
-            <img src="/icon.svg" alt="">
-          </span>
-          <h1>Agent Cards</h1>
-        </div>
-        <div class="topbar-actions">
-          <div id="version-pill" class="version-button" aria-label="Installed version">
-            <span id="version-label">v...</span>
-            <strong id="version-state">Checking</strong>
-          </div>
-          <div class="server-pill" title="Local API status">
-            <span class="status-dot"></span>
-            <span id="api-status">Syncing</span>
-          </div>
-        </div>
-      </header>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sipher — Agent Cards</title>
+  <meta name="description" content="Sipher is a local, self-hostable action feed for AI agents. Agents create structured cards; you approve, decide, or answer. Every response loops back as a structured event.">
+  <meta property="og:title" content="Sipher — Agent Cards">
+  <meta property="og:description" content="A dedicated feed for the moments your AI agents need human judgment.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/assets/sipher-logo.svg" type="image/svg+xml">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      <div id="freshness-banner" class="freshness-banner" hidden>
-        <strong id="freshness-title">Stale instance</strong>
-        <span id="freshness-copy">Verify the running Agent Cards URL.</span>
-        <button id="update-app" class="update-button" type="button" hidden>Update</button>
+    :root {
+      --bg: #080b14;
+      --surface: #0f1520;
+      --surface2: #141c2e;
+      --border: rgba(100, 140, 200, 0.10);
+      --border-bright: rgba(100, 140, 200, 0.18);
+      --orange: #ff8a34;
+      --orange-dim: #c96820;
+      --orange-light: #ffb064;
+      --orange-pale: rgba(255, 138, 52, 0.12);
+      --green: #3ee79a;
+      --green-dim: rgba(62, 231, 154, 0.15);
+      --blue: #5b9cf6;
+      --blue-dim: rgba(91, 156, 246, 0.12);
+      --purple: #9b7cf8;
+      --purple-dim: rgba(155, 124, 248, 0.12);
+      --text: #e8eef8;
+      --text-dim: #8ba0c4;
+      --text-muted: #4d607f;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 5vw, 64px);
+      height: 60px;
+      background: rgba(8, 11, 20, 0.80);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .nav-logo svg { width: 32px; height: 32px; flex-shrink: 0; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+      white-space: nowrap;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border-bright);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); color: var(--text); border-color: rgba(100,140,200,0.3); }
+
+    .btn-primary {
+      background: var(--orange);
+      color: #fff;
+      box-shadow: 0 0 24px rgba(255,138,52,0.25);
+    }
+    .btn-primary:hover { background: #ff9d52; box-shadow: 0 0 32px rgba(255,138,52,0.40); transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 100px clamp(20px, 5vw, 64px) 80px;
+      text-align: center;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,138,52,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 80% 60%, rgba(62,231,154,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 20% 80%, rgba(91,156,246,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 100px;
+      background: var(--orange-pale);
+      border: 1px solid rgba(255,138,52,0.25);
+      color: var(--orange-light);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 28px;
+    }
+
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-size: clamp(38px, 7vw, 76px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 24px;
+      background: linear-gradient(160deg, #f0f4ff 30%, #8ba0c4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--orange-light) 0%, var(--orange) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2.5vw, 21px);
+      color: var(--text-dim);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.5;
+    }
+
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 72px;
+    }
+
+    .hero-ctas .btn { padding: 12px 24px; font-size: 15px; border-radius: 10px; }
+
+    /* ── BROWSER MOCKUP ── */
+    .browser-wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border-bright);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.6),
+        0 60px 120px rgba(0,0,0,0.6),
+        0 0 80px rgba(255,138,52,0.08);
+      background: var(--surface);
+    }
+
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #0a0e1a;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .browser-dots { display: flex; gap: 6px; }
+    .browser-dots span {
+      width: 11px; height: 11px; border-radius: 50%;
+    }
+    .browser-dots span:nth-child(1) { background: #ff5f57; }
+    .browser-dots span:nth-child(2) { background: #febc2e; }
+    .browser-dots span:nth-child(3) { background: #28c840; }
+
+    .browser-url {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 10px;
+      max-width: 260px;
+      margin: 0 auto;
+    }
+
+    /* ── APP MOCKUP ── */
+    .app-mockup {
+      display: grid;
+      grid-template-columns: 180px 1fr 260px;
+      min-height: 440px;
+      background: #f5f6f8;
+      font-size: 13px;
+    }
+
+    @media (max-width: 700px) {
+      .app-mockup { grid-template-columns: 1fr; }
+      .mockup-sidebar, .mockup-detail { display: none; }
+    }
+
+    .mockup-sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e5e8ee;
+      padding: 16px 12px;
+    }
+
+    .mockup-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 0 4px;
+    }
+
+    .mockup-brand-icon {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #ffdcae, #ff741f);
+      flex-shrink: 0;
+    }
+
+    .mockup-brand-text { font-size: 14px; font-weight: 700; color: #1d1d2e; }
+
+    .mockup-nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #555;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    .mockup-nav-item.active { background: #f0f1ff; color: #3d3dbc; font-weight: 600; }
+    .mockup-nav-item span.badge { background: #ff8a34; color: #fff; border-radius: 100px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+    .mockup-nav-item .nav-icon { font-size: 15px; margin-right: 6px; }
+
+    .mockup-feed {
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .mockup-feed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .mockup-feed-title { font-size: 15px; font-weight: 700; color: #1d1d2e; }
+    .mockup-feed-sub { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .mockup-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e5e8ee;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .mockup-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .mockup-card-agent {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .mockup-avatar {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffdcae, #ff741f);
+      flex-shrink: 0;
+    }
+
+    .mockup-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .mockup-badge.approval { background: #fff2e8; color: #c95f00; }
+    .mockup-badge.choice   { background: #e8f4ff; color: #0066cc; }
+    .mockup-badge.question { background: #f3e8ff; color: #7a00cc; }
+    .mockup-badge.high { background: #ffe8e8; color: #cc0000; font-size: 9px; }
+
+    .mockup-card-title { font-size: 13px; font-weight: 600; color: #1d1d2e; margin-bottom: 4px; }
+    .mockup-card-desc { font-size: 11px; color: #666; line-height: 1.5; margin-bottom: 10px; }
+
+    .mockup-card-actions { display: flex; gap: 6px; }
+    .mockup-action-btn {
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: default;
+    }
+    .mockup-action-btn.approve { background: #1a8a4a; color: #fff; }
+    .mockup-action-btn.reject  { background: #f0f1f5; color: #555; }
+    .mockup-action-btn.option  { background: #eef2ff; color: #3d3dbc; }
+
+    .mockup-detail {
+      background: #fff;
+      border-left: 1px solid #e5e8ee;
+      padding: 16px;
+    }
+
+    .mockup-detail-title { font-size: 13px; font-weight: 700; color: #1d1d2e; margin-bottom: 12px; }
+
+    .mockup-meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #888;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f1f5;
+    }
+    .mockup-meta-row strong { color: #444; }
+
+    /* ── SECTIONS ── */
+    section { padding: 100px clamp(20px, 5vw, 64px); }
+
+    .section-label {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .section-body {
+      font-size: 17px;
+      color: var(--text-dim);
+      max-width: 540px;
+      line-height: 1.6;
+    }
+
+    /* ── PROBLEM ── */
+    .problem {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .problem-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 56px;
+    }
+
+    .problem-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .problem-card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+
+    .problem-icon {
+      font-size: 28px;
+      margin-bottom: 14px;
+    }
+
+    .problem-head {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .problem-desc {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .problem-answer {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: var(--orange-pale);
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--orange);
+      font-size: 13px;
+      color: var(--orange-light);
+      font-weight: 500;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0;
+      margin-top: 56px;
+      position: relative;
+    }
+
+    .steps::before {
+      content: "";
+      position: absolute;
+      top: 40px;
+      left: 15%;
+      right: 15%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+      pointer-events: none;
+    }
+
+    @media (max-width: 700px) { .steps::before { display: none; } }
+
+    .step {
+      padding: 32px 28px;
+      text-align: center;
+    }
+
+    .step-num {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid var(--border-bright);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--orange);
+      margin: 0 auto 20px;
+      background: var(--surface);
+      position: relative;
+      z-index: 1;
+    }
+
+    .step h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .step p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    .step-tag {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .step-tag.agent  { background: var(--blue-dim);   color: var(--blue); }
+    .step-tag.human  { background: var(--orange-pale); color: var(--orange-light); }
+    .step-tag.loop   { background: var(--green-dim);   color: var(--green); }
+
+    /* ── CARD TYPES ── */
+    .cards-section { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .cards-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .card-types-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 48px;
+    }
+
+    .card-type {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .card-type:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+
+    .ct-icon { font-size: 26px; margin-bottom: 12px; }
+    .ct-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .ct-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+    .card-type.approval  { border-color: rgba(255,138,52,0.25); }
+    .card-type.approval:hover  { border-color: rgba(255,138,52,0.5); box-shadow: 0 12px 40px rgba(255,138,52,0.1); }
+    .card-type.choice    { border-color: rgba(91,156,246,0.2); }
+    .card-type.choice:hover    { border-color: rgba(91,156,246,0.45); box-shadow: 0 12px 40px rgba(91,156,246,0.1); }
+    .card-type.question  { border-color: rgba(155,124,248,0.2); }
+    .card-type.question:hover  { border-color: rgba(155,124,248,0.45); box-shadow: 0 12px 40px rgba(155,124,248,0.1); }
+    .card-type.status    { border-color: rgba(62,231,154,0.2); }
+    .card-type.status:hover    { border-color: rgba(62,231,154,0.45); box-shadow: 0 12px 40px rgba(62,231,154,0.1); }
+    .card-type.briefing  { border-color: rgba(255,176,100,0.2); }
+    .card-type.briefing:hover  { border-color: rgba(255,176,100,0.4); box-shadow: 0 12px 40px rgba(255,176,100,0.08); }
+    .card-type.comparison{ border-color: rgba(248,113,113,0.2); }
+    .card-type.comparison:hover{ border-color: rgba(248,113,113,0.4); box-shadow: 0 12px 40px rgba(248,113,113,0.08); }
+
+    /* ── FEATURES ── */
+    .features-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 56px;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+
+    .feature-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+    .feature-icon.orange { background: var(--orange-pale); }
+    .feature-icon.green  { background: var(--green-dim); }
+    .feature-icon.blue   { background: var(--blue-dim); }
+    .feature-icon.purple { background: var(--purple-dim); }
+
+    .feature h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature p  { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── QUICKSTART ── */
+    .quickstart-section { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .quickstart-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    @media (max-width: 800px) { .quickstart-inner { grid-template-columns: 1fr; } }
+
+    .code-block {
+      background: #0a0c14;
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius);
+      overflow: hidden;
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Consolas, "Courier New", monospace;
+    }
+
+    .code-block-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .code-block-bar span { color: var(--text-dim); font-family: inherit; }
+
+    pre {
+      padding: 20px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .c-comment { color: #4d607f; }
+    .c-cmd     { color: var(--green); }
+    .c-arg     { color: var(--orange-light); }
+    .c-str     { color: #a8d8b9; }
+    .c-key     { color: var(--blue); }
+    .c-prompt  { color: var(--text-muted); user-select: none; }
+
+    /* ── AGENTS ── */
+    .agents-section { text-align: center; }
+
+    .agents-inner { max-width: 900px; margin: 0 auto; }
+
+    .agent-chips {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 44px;
+    }
+
+    .agent-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border-bright);
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dim);
+      transition: all 0.2s;
+    }
+    .agent-chip:hover { background: var(--surface2); color: var(--text); border-color: rgba(100,140,200,0.3); }
+
+    .agent-chip .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── CTA BANNER ── */
+    .cta-banner {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cta-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+      padding: 100px 0;
+    }
+
+    .cta-inner h2 {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 18px;
+    }
+
+    .cta-inner p {
+      font-size: 17px;
+      color: var(--text-dim);
+      margin-bottom: 36px;
+    }
+
+    .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .cta-btns .btn { padding: 14px 28px; font-size: 15px; border-radius: 10px; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 40px clamp(20px, 5vw, 64px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+    .footer-brand svg { width: 26px; height: 26px; }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--text-dim); }
+
+    /* ── GITHUB ICON ── */
+    .gh-icon { width: 16px; height: 16px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .hero-ctas .btn { width: 100%; justify-content: center; }
+      .hero-ctas { flex-direction: column; align-items: stretch; max-width: 280px; margin-left: auto; margin-right: auto; }
+    }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--orange), transparent);
+      border-radius: 2px;
+      margin: 20px 0 40px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sipher">
+      <defs>
+        <linearGradient id="nt" x1="12.8" x2="83.2" y1="10.5" y2="87" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffdcae"/><stop offset=".48" stop-color="#ffb064"/><stop offset="1" stop-color="#ff741f"/>
+        </linearGradient>
+        <linearGradient id="na" x1="24.8" x2="72" y1="21" y2="75.8" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#f8fbff"/><stop offset="1" stop-color="#dcecff"/>
+        </linearGradient>
+        <linearGradient id="nv" x1="31.8" x2="65.2" y1="36" y2="53.2" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#172238"/><stop offset="1" stop-color="#101827"/>
+        </linearGradient>
+        <linearGradient id="ne" x1="0" x2="1" y1="0" y2="1">
+          <stop stop-color="#3ee79a"/><stop offset="1" stop-color="#20c982"/>
+        </linearGradient>
+      </defs>
+      <rect width="96" height="96" rx="24" fill="url(#nt)"/>
+      <rect x="24" y="22.5" width="48.8" height="54" rx="20.2" fill="url(#na)"/>
+      <rect x="32.2" y="36" width="33" height="18.8" rx="9.4" fill="url(#nv)"/>
+      <circle cx="41.2" cy="45.4" r="3.5" fill="url(#ne)"/>
+      <circle cx="55.5" cy="45.4" r="3.5" fill="url(#ne)"/>
+      <rect x="54" y="55.5" width="24.8" height="21" rx="8.2" fill="#ff8a34" stroke="#fff" stroke-width="3.8"/>
+      <path d="m60.4 66 5.3 5.2 10.6-13.9" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.1"/>
+    </svg>
+    Sipher
+  </a>
+  <div class="nav-links">
+    <a href="https://github.com/anatgotfried/sipher.oc" class="btn btn-ghost" target="_blank" rel="noopener">
+      <svg class="gh-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+      </svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="dot"></span>
+    Local-first · Self-hostable · MIT
+  </div>
+
+  <h1>The action feed<br>your <em>agents</em> need</h1>
+
+  <p class="hero-sub">
+    Sipher is a structured card feed for AI agents. When an agent needs a decision — an approval, a choice, an answer — it surfaces a card. You act. The event loops back.
+  </p>
+
+  <div class="hero-ctas">
+    <a href="https://github.com/anatgotfried/sipher.oc" class="btn btn-primary" target="_blank" rel="noopener">
+      <svg class="gh-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      View on GitHub
+    </a>
+    <a href="#quickstart" class="btn btn-ghost">
+      Quick Start →
+    </a>
+  </div>
+
+  <!-- Browser Mockup -->
+  <div class="browser-wrap">
+    <div class="browser-bar">
+      <div class="browser-dots">
+        <span></span><span></span><span></span>
       </div>
-
-      <main class="main-grid">
-        <aside class="rail" aria-label="Agent Cards sections">
-          <button class="nav-item active" data-view="needs-me" type="button">
-            <span class="nav-label"><span class="ui-icon" data-icon="inbox"></span>Needs Me</span>
-            <strong id="needs-count">0</strong>
-          </button>
-          <button class="nav-item" data-view="today" type="button">
-            <span class="nav-label"><span class="ui-icon" data-icon="calendar"></span>Today</span>
-            <strong id="today-count">0</strong>
-          </button>
-          <button class="nav-item" data-view="projects" type="button">
-            <span class="nav-label"><span class="ui-icon" data-icon="folder"></span>Projects</span>
-            <strong id="project-count">0</strong>
-          </button>
-          <button class="nav-item" data-view="archive" type="button">
-            <span class="nav-label"><span class="ui-icon" data-icon="archive"></span>Archive</span>
-            <strong id="archive-count">0</strong>
-          </button>
-        </aside>
-
-        <section class="feed-panel" aria-live="polite">
-          <div class="feed-header">
-            <div>
-              <h2 id="view-title">Needs Me</h2>
-              <p id="view-subtitle">Review, correct, or approve agent actions before they run.</p>
-            </div>
-            <div class="toolbar">
-              <select id="type-filter" aria-label="Filter by card type">
-                <option value="all">All types</option>
-                <option value="approval">Approval</option>
-                <option value="choice">Choice</option>
-                <option value="question">Question</option>
-                <option value="status">Status</option>
-                <option value="briefing">Briefing</option>
-                <option value="comparison">Comparison</option>
-              </select>
-              <select id="project-filter" aria-label="Filter by project">
-                <option value="all">All projects</option>
-              </select>
-              <button id="seed-demo" class="ghost-button dev-only" type="button" hidden>Seed demo</button>
-            </div>
-          </div>
-
-          <div id="brief-summary" class="brief-summary" hidden></div>
-          <div id="task-progress" class="task-progress" hidden></div>
-          <div id="cards" class="cards"></div>
-          <div id="empty-state" class="empty-state" hidden>
-            <h3>No cards here</h3>
-            <p>Agents can create cards through the API or CLI.</p>
-          </div>
-        </section>
-
-        <aside class="detail-panel" aria-label="Selected card details">
-          <div id="detail-empty" class="detail-empty">
-            <h2>Select a card</h2>
-            <p>Review metadata, history, and structured feedback events.</p>
-          </div>
-          <article id="detail-card" class="detail-card" hidden></article>
-        </aside>
-      </main>
-
-      <nav class="bottom-nav" aria-label="Primary">
-        <button class="bottom-item active" data-view="needs-me" type="button"><span class="ui-icon" data-icon="inbox"></span><span>Needs Me</span></button>
-        <button class="bottom-item" data-view="today" type="button"><span class="ui-icon" data-icon="calendar"></span><span>Today</span></button>
-        <button class="bottom-item" data-view="projects" type="button"><span class="ui-icon" data-icon="folder"></span><span>Projects</span></button>
-        <button class="bottom-item" data-view="archive" type="button"><span class="ui-icon" data-icon="archive"></span><span>Archive</span></button>
-      </nav>
+      <div class="browser-url">localhost:4173</div>
     </div>
 
-    <script src="/app.js" type="module"></script>
-  </body>
+    <!-- App UI Mockup -->
+    <div class="app-mockup">
+      <!-- Sidebar -->
+      <div class="mockup-sidebar">
+        <div class="mockup-brand">
+          <div class="mockup-brand-icon"></div>
+          <span class="mockup-brand-text">Agent Cards</span>
+        </div>
+        <div class="mockup-nav-item active">
+          <span><span class="nav-icon">📥</span> Needs Me</span>
+          <span class="badge">3</span>
+        </div>
+        <div class="mockup-nav-item">
+          <span><span class="nav-icon">📅</span> Today</span>
+          <span style="color:#bbb;font-size:12px">5</span>
+        </div>
+        <div class="mockup-nav-item">
+          <span><span class="nav-icon">📁</span> Projects</span>
+          <span style="color:#bbb;font-size:12px">2</span>
+        </div>
+        <div class="mockup-nav-item">
+          <span><span class="nav-icon">🗄</span> Archive</span>
+          <span style="color:#bbb;font-size:12px">12</span>
+        </div>
+      </div>
+
+      <!-- Feed -->
+      <div class="mockup-feed">
+        <div class="mockup-feed-header">
+          <div>
+            <div class="mockup-feed-title">Needs Me</div>
+            <div class="mockup-feed-sub">Review, correct, or approve agent actions before they run.</div>
+          </div>
+        </div>
+
+        <!-- Approval Card -->
+        <div class="mockup-card">
+          <div class="mockup-card-head">
+            <div class="mockup-card-agent">
+              <div class="mockup-avatar"></div>
+              Hermes · 2m ago
+            </div>
+            <div style="display:flex;gap:5px">
+              <span class="mockup-badge approval">Approval</span>
+              <span class="mockup-badge high">High</span>
+            </div>
+          </div>
+          <div class="mockup-card-title">Send investor update email</div>
+          <div class="mockup-card-desc">Draft ready to send to 12 recipients. Subject: Q2 Product Update — May 2026.</div>
+          <div class="mockup-card-actions">
+            <span class="mockup-action-btn approve">✓ Send</span>
+            <span class="mockup-action-btn reject">✗ Reject</span>
+          </div>
+        </div>
+
+        <!-- Choice Card -->
+        <div class="mockup-card">
+          <div class="mockup-card-head">
+            <div class="mockup-card-agent">
+              <div class="mockup-avatar" style="background:linear-gradient(135deg,#c8e6ff,#5b9cf6)"></div>
+              OpenClaw · 8m ago
+            </div>
+            <span class="mockup-badge choice">Choice</span>
+          </div>
+          <div class="mockup-card-title">API rate limit strategy</div>
+          <div class="mockup-card-desc">Choose how to handle rate limits on the new endpoint before I proceed.</div>
+          <div class="mockup-card-actions">
+            <span class="mockup-action-btn option">Queue</span>
+            <span class="mockup-action-btn option">Retry</span>
+            <span class="mockup-action-btn option">Fail fast</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Panel -->
+      <div class="mockup-detail">
+        <div class="mockup-detail-title">Send investor update email</div>
+        <div class="mockup-meta-row"><span>Agent</span><strong>Hermes</strong></div>
+        <div class="mockup-meta-row"><span>Project</span><strong>Comms</strong></div>
+        <div class="mockup-meta-row"><span>Priority</span><strong>High</strong></div>
+        <div class="mockup-meta-row"><span>Needed by</span><strong>5:00 PM</strong></div>
+        <div style="margin-top:14px;padding:10px 12px;background:#f9fafb;border-radius:8px;font-size:11px;color:#555;line-height:1.6;">
+          <strong style="display:block;margin-bottom:6px;color:#333;">Draft preview</strong>
+          Hi team, here's the Q2 product update. We shipped 4 features, resolved 23 issues, and are on track for the June milestone…
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="problem">
+  <div class="problem-inner">
+    <span class="section-label">The Problem</span>
+    <h2 class="section-title">Agents interrupt you<br>in the worst possible ways</h2>
+    <p class="section-body">Chat scrollback buries decisions. Approval prompts arrive without context. There's no reliable way to loop a structured response back to the agent.</p>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-icon">💬</div>
+        <div class="problem-head">Decisions buried in chat</div>
+        <div class="problem-desc">Critical approvals scroll past in conversation threads, mixed with status updates.</div>
+        <div class="problem-answer">A dedicated Needs Me feed surfaces only what requires your action.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">🙈</div>
+        <div class="problem-head">Approvals without context</div>
+        <div class="problem-desc">"Should I send this?" — but the agent never shows you what "this" actually is.</div>
+        <div class="problem-answer">Approval cards must include the exact draft, diff, command, or attachment.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">🔄</div>
+        <div class="problem-head">No structured feedback loop</div>
+        <div class="problem-desc">Your decision goes into the void. The agent can't reliably act on it programmatically.</div>
+        <div class="problem-answer">Every button press records a structured event and can trigger a webhook.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">🔒</div>
+        <div class="problem-head">Everything goes to the cloud</div>
+        <div class="problem-desc">Agent tools that require subscriptions or phone-home to external services for private workflows.</div>
+        <div class="problem-answer">Sipher runs locally. Zero external dependencies. Self-hostable via Tailscale.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section>
+  <div class="how-inner">
+    <span class="section-label">How It Works</span>
+    <h2 class="section-title">Three moves. Closed loop.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Agent creates a card</h3>
+        <p>Your agent POSTs a structured card via HTTP or CLI — with type, context, priority, and the exact content needing review.</p>
+        <span class="step-tag agent">Agent</span>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>You decide</h3>
+        <p>Sipher surfaces the card in your Needs Me feed. You approve, reject, answer, or choose — with full context right there.</p>
+        <span class="step-tag human">Human</span>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>The loop closes</h3>
+        <p>The action is recorded as a structured event. If the card has a <code>callbackUrl</code>, Sipher POSTs the result immediately.</p>
+        <span class="step-tag loop">Structured Event</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CARD TYPES -->
+<section class="cards-section">
+  <div class="cards-inner">
+    <span class="section-label">Card Types</span>
+    <h2 class="section-title">A type for every agent moment</h2>
+    <p class="section-body">Agents pick the right card type. Each one has a defined schema — so you always know what you're looking at.</p>
+    <div class="card-types-grid">
+      <div class="card-type approval">
+        <div class="ct-icon">✅</div>
+        <div class="ct-name">Approval</div>
+        <div class="ct-desc">Approve or reject an action. Requires the exact content: email draft, diff, command, purchase, or attachment.</div>
+      </div>
+      <div class="card-type choice">
+        <div class="ct-icon">🔀</div>
+        <div class="ct-name">Choice</div>
+        <div class="ct-desc">Pick from a defined set of options. The agent waits for one clear signal before proceeding.</div>
+      </div>
+      <div class="card-type question">
+        <div class="ct-icon">❓</div>
+        <div class="ct-name">Question</div>
+        <div class="ct-desc">Answer a free-text or structured input field. Unblocks the agent with a typed, record-able response.</div>
+      </div>
+      <div class="card-type status">
+        <div class="ct-icon">📊</div>
+        <div class="ct-name">Status</div>
+        <div class="ct-desc">An agent progress update that doesn't need action. Keeps you informed without asking for anything.</div>
+      </div>
+      <div class="card-type briefing">
+        <div class="ct-icon">🗞</div>
+        <div class="ct-name">Briefing</div>
+        <div class="ct-desc">A multi-item summary — morning brief, project recap, or end-of-day rollup — with bullet items and source links.</div>
+      </div>
+      <div class="card-type comparison">
+        <div class="ct-icon">⚖️</div>
+        <div class="ct-name">Comparison</div>
+        <div class="ct-desc">Side-by-side options with structured fields. Built for architecture decisions, vendor comparisons, and tradeoff analysis.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section>
+  <div class="features-inner">
+    <span class="section-label">Built Right</span>
+    <h2 class="section-title">Designed for real agent workflows</h2>
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon orange">🏠</div>
+        <h3>Local-first, zero friction</h3>
+        <p>No accounts. No cloud services. Runs on <code>localhost:4173</code> with a single <code>npm start</code>. Your data stays in a local JSON file.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon green">🔗</div>
+        <h3>Webhook feedback loop</h3>
+        <p>Add a <code>callbackUrl</code> to any card and Sipher POSTs the full <code>{ card, event }</code> payload the moment you act. Agents can poll or listen.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon blue">🤝</div>
+        <h3>Multi-agent ready</h3>
+        <p>Hermes, OpenClaw, Atlas, Calendar Agent, Deploy Agent — any agent that can POST JSON can surface cards in the same shared feed.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon purple">📱</div>
+        <h3>PWA on any device</h3>
+        <p>Mobile-first layout. Add to home screen. Expose privately over Tailscale Serve to approve cards from your phone while the agent runs on your desktop.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon orange">⏱</div>
+        <h3>Expiration &amp; freshness</h3>
+        <p>Cards with <code>expiresAt</code> auto-archive when they lapse. <code>/api/version</code> lets agents verify they're talking to the right, current instance.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon green">🛠</div>
+        <h3>HTTP API + CLI</h3>
+        <p>Full REST API for card creation and action recording. CLI wrapper for scripting, seeding demo data, and running simulations from the terminal.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUICKSTART -->
+<section class="quickstart-section" id="quickstart">
+  <div class="quickstart-inner">
+    <div>
+      <span class="section-label">Quick Start</span>
+      <h2 class="section-title">Up in 30 seconds</h2>
+      <div class="section-divider"></div>
+      <p class="section-body">Requires Node 18+. Clone the repo, install, start the server — then seed the demo feed to see Sipher in action immediately.</p>
+      <div style="margin-top:28px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text-dim)">
+          <span style="color:var(--green);font-size:18px">✓</span> Zero config, zero external services
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text-dim)">
+          <span style="color:var(--green);font-size:18px">✓</span> Demo cards seeded instantly with <code>npm run seed</code>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text-dim)">
+          <span style="color:var(--green);font-size:18px">✓</span> Multi-agent simulation via <code>npm run simulate</code>
+        </div>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-block-bar">
+        <span>bash</span>
+      </div>
+      <pre><code><span class="c-comment"># Clone and install</span>
+<span class="c-prompt">$ </span><span class="c-cmd">git clone</span> <span class="c-str">https://github.com/anatgotfried/sipher.oc</span>
+<span class="c-prompt">$ </span><span class="c-cmd">cd</span> sipher.oc
+<span class="c-prompt">$ </span><span class="c-cmd">npm install</span>
+
+<span class="c-comment"># Start the server</span>
+<span class="c-prompt">$ </span><span class="c-cmd">npm start</span>
+<span class="c-comment"># Open http://localhost:4173</span>
+
+<span class="c-comment"># Seed demo cards</span>
+<span class="c-prompt">$ </span><span class="c-cmd">npm run seed</span>
+
+<span class="c-comment"># Or run a multi-agent simulation</span>
+<span class="c-prompt">$ </span><span class="c-cmd">npm run simulate</span>
+
+<span class="c-comment"># POST a card from any agent</span>
+<span class="c-prompt">$ </span><span class="c-cmd">curl</span> -X POST localhost:4173/api/cards \
+  -H <span class="c-str">'content-type: application/json'</span> \
+  -d @examples/approval-card.json</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- MULTI-AGENT -->
+<section class="agents-section">
+  <div class="agents-inner">
+    <span class="section-label">Multi-Agent</span>
+    <h2 class="section-title">One feed. Any agent.</h2>
+    <p class="section-body" style="margin:0 auto">Sipher doesn't belong to one agent. Any tool that can POST JSON can surface a card. Multiple agents share one clean feed — each card is clearly owned, and cross-agent context lives in structured metadata.</p>
+    <div class="agent-chips">
+      <div class="agent-chip"><span class="dot" style="background:#ff8a34;box-shadow:0 0 6px #ff8a34"></span> Hermes</div>
+      <div class="agent-chip"><span class="dot" style="background:#5b9cf6;box-shadow:0 0 6px #5b9cf6"></span> OpenClaw</div>
+      <div class="agent-chip"><span class="dot" style="background:#3ee79a;box-shadow:0 0 6px #3ee79a"></span> Atlas</div>
+      <div class="agent-chip"><span class="dot" style="background:#9b7cf8;box-shadow:0 0 6px #9b7cf8"></span> Calendar Agent</div>
+      <div class="agent-chip"><span class="dot" style="background:#f87171;box-shadow:0 0 6px #f87171"></span> Deploy Agent</div>
+      <div class="agent-chip"><span class="dot" style="background:var(--text-muted)"></span> Your Agent</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-banner">
+  <div class="cta-inner">
+    <h2>Give your agents a<br><em style="font-style:normal;background:linear-gradient(135deg,var(--orange-light),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">proper place to ask</em></h2>
+    <p>Open source, MIT licensed, runs entirely on your machine.</p>
+    <div class="cta-btns">
+      <a href="https://github.com/anatgotfried/sipher.oc" class="btn btn-primary" target="_blank" rel="noopener">
+        <svg class="gh-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="https://github.com/anatgotfried/sipher.oc#quick-start" class="btn btn-ghost" target="_blank" rel="noopener">
+        Read the docs →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ft" x1="12.8" x2="83.2" y1="10.5" y2="87" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffdcae"/><stop offset=".48" stop-color="#ffb064"/><stop offset="1" stop-color="#ff741f"/>
+        </linearGradient>
+        <linearGradient id="fa" x1="24.8" x2="72" y1="21" y2="75.8" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#f8fbff"/><stop offset="1" stop-color="#dcecff"/>
+        </linearGradient>
+        <linearGradient id="fv" x1="31.8" x2="65.2" y1="36" y2="53.2" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#172238"/><stop offset="1" stop-color="#101827"/>
+        </linearGradient>
+        <linearGradient id="fe" x1="0" x2="1" y1="0" y2="1">
+          <stop stop-color="#3ee79a"/><stop offset="1" stop-color="#20c982"/>
+        </linearGradient>
+      </defs>
+      <rect width="96" height="96" rx="24" fill="url(#ft)"/>
+      <rect x="24" y="22.5" width="48.8" height="54" rx="20.2" fill="url(#fa)"/>
+      <rect x="32.2" y="36" width="33" height="18.8" rx="9.4" fill="url(#fv)"/>
+      <circle cx="41.2" cy="45.4" r="3.5" fill="url(#fe)"/>
+      <circle cx="55.5" cy="45.4" r="3.5" fill="url(#fe)"/>
+      <rect x="54" y="55.5" width="24.8" height="21" rx="8.2" fill="#ff8a34" stroke="#fff" stroke-width="3.8"/>
+      <path d="m60.4 66 5.3 5.2 10.6-13.9" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.1"/>
+    </svg>
+    Sipher
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com/anatgotfried/sipher.oc" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/anatgotfried/sipher.oc/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    <a href="/privacy.html">Privacy</a>
+    <a href="/terms.html">Terms</a>
+  </div>
+</footer>
+
+</body>
 </html>
