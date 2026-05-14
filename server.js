@@ -577,7 +577,7 @@ async function handleApi(req, res, url) {
 
     if (req.method === "POST" && parts[3] === "actions") {
       const input = await readBody(req);
-      if (isResolved(card)) {
+      if (isResolved(card) && input.action !== "archive") {
         return json(res, 409, { error: "card_resolved", card });
       }
       const actionConfig = normalizeActions(card.actions || []).find((action) => action.id === input.action);
