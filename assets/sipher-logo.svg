@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" role="img" aria-label="Sipher">
+  <defs>
+    <linearGradient id="tile" x1="12.8" x2="83.2" y1="10.5" y2="87" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffdcae"/>
+      <stop offset="0.48" stop-color="#ffb064"/>
+      <stop offset="1" stop-color="#ff741f"/>
+    </linearGradient>
+    <linearGradient id="agent" x1="24.8" x2="72" y1="21" y2="75.8" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#dcecff"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="31.8" x2="65.2" y1="36" y2="53.2" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172238"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="eye" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#3ee79a"/>
+      <stop offset="1" stop-color="#20c982"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="24" fill="url(#tile)"/>
+  <rect x="24" y="22.5" width="48.8" height="54" rx="20.2" fill="url(#agent)"/>
+  <rect x="32.2" y="36" width="33" height="18.8" rx="9.4" fill="url(#visor)"/>
+  <circle cx="41.2" cy="45.4" r="3.5" fill="url(#eye)"/>
+  <circle cx="55.5" cy="45.4" r="3.5" fill="url(#eye)"/>
+  <rect x="54" y="55.5" width="24.8" height="21" rx="8.2" fill="#ff8a34" stroke="#ffffff" stroke-width="3.8"/>
+  <path d="m60.4 66 5.3 5.2 10.6-13.9" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.1"/>
+  <text x="122" y="66" fill="#1d1d1f" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="56" font-weight="760" letter-spacing="0">Sipher</text>
+</svg>

@@ -1,11 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Agent Cards">
-  <rect width="128" height="128" rx="24" fill="#111827"/>
-  <rect x="30" y="24" width="58" height="74" rx="8" fill="#ffffff"/>
-  <rect x="42" y="39" width="28" height="7" rx="3.5" fill="#2563eb"/>
-  <rect x="42" y="55" width="34" height="6" rx="3" fill="#dbeafe"/>
-  <rect x="42" y="69" width="22" height="6" rx="3" fill="#fecaca"/>
-  <rect x="53" y="35" width="58" height="74" rx="8" fill="#2563eb"/>
-  <rect x="66" y="51" width="28" height="7" rx="3.5" fill="#ffffff"/>
-  <rect x="66" y="67" width="32" height="6" rx="3" fill="#bfdbfe"/>
-  <rect x="66" y="81" width="20" height="6" rx="3" fill="#fed7aa"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Sipher">
+  <defs>
+    <linearGradient id="tile" x1="17" x2="111" y1="14" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffdcae"/>
+      <stop offset="0.48" stop-color="#ffb064"/>
+      <stop offset="1" stop-color="#ff741f"/>
+    </linearGradient>
+    <linearGradient id="agent" x1="33" x2="96" y1="28" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#dcecff"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="42" x2="87" y1="48" y2="71" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172238"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="eye" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#3ee79a"/>
+      <stop offset="1" stop-color="#20c982"/>
+    </linearGradient>
+    <filter id="agentShadow" x="18" y="21" width="90" height="91" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" flood-color="#b85b1e" flood-opacity="0.2" stdDeviation="7"/>
+    </filter>
+    <filter id="badgeShadow" x="63" y="63" width="56" height="53" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="5" flood-color="#a64b18" flood-opacity="0.24" stdDeviation="5"/>
+    </filter>
+  </defs>
+  <rect width="128" height="128" rx="31" fill="url(#tile)"/>
+  <g filter="url(#agentShadow)">
+    <rect x="32" y="30" width="65" height="72" rx="27" fill="url(#agent)"/>
+    <rect x="43" y="48" width="44" height="25" rx="12.5" fill="url(#visor)"/>
+    <circle cx="55" cy="60.5" r="4.7" fill="url(#eye)"/>
+    <circle cx="74" cy="60.5" r="4.7" fill="url(#eye)"/>
+  </g>
+  <g filter="url(#badgeShadow)">
+    <rect x="72" y="74" width="33" height="28" rx="11" fill="#ff8a34" stroke="#ffffff" stroke-width="5"/>
+    <path d="m80.5 88 7.1 7 14.2-18.5" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.4"/>
+  </g>
 </svg>

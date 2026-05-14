@@ -142,10 +142,12 @@ Rules:
 - One card should have one primary owning agent in `agent`.
 - If another agent contributed evidence, put that in `metadata.contributors`.
 - Use `project` to group related cards across agents, for example `Agent Cards`, `Family`, `Calendar`, or `Sipher`.
+- If no real project exists, set `project` to `General`. Do not omit it.
 - Use a briefing card when Hermes summarizes other agents' cards. Put linked card IDs in `metadata.sourceCards`.
 - Use a status card for progress, a question card for missing information, a choice/comparison card for preferences, and an approval card only for consequential actions.
 - If the same issue changes, update the existing card with `PATCH /api/cards/<id>` instead of creating duplicate cards.
 - After a user action, read the event and close the loop with a status update, callback, or archived/completed card.
+- Keep the human inbox small. Prefer one daily briefing plus a few concrete action cards over a wall of approvals.
 
 Good multi-agent sequence:
 
@@ -181,14 +183,61 @@ Do not create a card for:
 - Duplicate reminders for the same unresolved issue.
 - Approvals without the exact draft, diff, command, recipient, release note, cost, or risk.
 
+## Daily Brief And Approval Batching
+
+The `Today` tab is the Daily Brief surface. It intentionally shows only a small working set of action cards at a time so the user is not overwhelmed.
+
+Agent rules for Daily Brief:
+
+- Create one `briefing` card per day for the summary. Set `project` to `Daily Brief`.
+- Put weather, calendar, news, project status, and agent recommendations in `items` or structured `metadata.sections`.
+- Link the underlying cards in `metadata.sourceCards`; do not hide consequential actions inside the brief.
+- Use separate approval/question/choice cards for actions the user must explicitly decide.
+- Respect the user's approval tolerance. If `metadata.preferences.maxApprovalBatch` is present on the daily brief, do not create more than that many active approval cards for the brief cycle.
+- Respect detail preference. Use `metadata.preferences.detailLevel` as `brief`, `normal`, or `detailed`; default to `normal`.
+
+Recommended Daily Brief metadata:
+
+```json
+{
+  "type": "briefing",
+  "title": "Daily brief",
+  "summary": "Weather, calendar, open decisions, and agent recommendations.",
+  "project": "Daily Brief",
+  "items": [
+    "Weather: mild morning, rain likely after 16:00.",
+    "Calendar: one conflict needs a preference.",
+    "Approvals: showing the next three only."
+  ],
+  "metadata": {
+    "preferences": {
+      "dailyBriefEnabled": true,
+      "maxApprovalBatch": 3,
+      "detailLevel": "normal"
+    },
+    "sections": [
+      { "title": "Weather", "body": "18-23C, rain likely after 16:00." },
+      { "title": "News", "body": "Only include items that change today's decisions." },
+      { "title": "Open items", "body": "Three approvals are ready; four more are queued." }
+    ],
+    "sourceCards": ["calendar_conflict_2026_05_14"]
+  },
+  "expiresAt": "2026-05-13T20:59:59.000Z"
+}
+```
+
 Every useful card should include:
 
 - A title that names the decision or status.
 - A summary that explains why it matters now.
 - `details` or `metadata` with the evidence needed to decide.
 - A small set of actions that map to what the agent will actually do next.
-- A stable `agent.id`, `project`, and, when useful, `callbackUrl`.
+- A stable `agent.id`, `project`, and `priority`.
+- `neededAt` when there is a specific date/time the human should act by.
+- `callbackUrl` when useful.
 - `expiresAt` when the card stops being useful after a deadline.
+
+`Needs Me` is ordered by `neededAt`/due date first when present, otherwise by `priority`, then recency. Always send `priority` as `low`, `medium`, or `high`; Sipher rejects cards without it.
 
 ## Expiration
 

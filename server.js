@@ -17,6 +17,7 @@ const updateCommand = process.env.AGENT_CARDS_UPDATE_COMMAND || "git pull && npm
 const updateUrl = process.env.AGENT_CARDS_UPDATE_URL || "";
 const canonicalUrl = process.env.AGENT_CARDS_CANONICAL_URL || "";
 const serverStartedAt = new Date().toISOString();
+let apiQueue = Promise.resolve();
 
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -56,12 +57,29 @@ function id(prefix) {
 }
 
 function json(res, status, body) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store"
+  });
   res.end(JSON.stringify(body));
 }
 
 function notFound(res) {
   json(res, 404, { error: "not_found" });
+}
+
+function badRequest(res, message, details = {}) {
+  return json(res, 400, { error: "bad_request", message, ...details });
+}
+
+function conflict(res, message, details = {}) {
+  return json(res, 409, { error: "conflict", message, ...details });
+}
+
+function queueApi(task) {
+  const run = apiQueue.then(task, task);
+  apiQueue = run.catch(() => {});
+  return run;
 }
 
 function readBody(req) {
@@ -93,7 +111,8 @@ function normalizeCard(input) {
     details: input.details || "",
     status: input.status || "waiting",
     priority: input.priority || "medium",
-    project: input.project || "Inbox",
+    neededAt: input.neededAt || input.dueAt || input.dueDate || null,
+    project: input.project || "General",
     agent: input.agent || { id: "local-agent", name: "Local Agent" },
     actions: normalizeActions(input.actions || []),
     options: input.options || [],
@@ -109,6 +128,40 @@ function normalizeCard(input) {
   };
 }
 
+function validateCardInput(input, existingCards = []) {
+  if (input.id && existingCards.some((card) => card.id === input.id)) {
+    return `Card id already exists: ${input.id}`;
+  }
+  if (!input.agent?.id || !input.agent?.name) {
+    return "Cards must include agent.id and agent.name.";
+  }
+  if (!input.project) {
+    return "Cards must include project, or use General when no project applies.";
+  }
+  if (!input.priority || !["low", "medium", "high"].includes(input.priority)) {
+    return "Cards must include priority as low, medium, or high.";
+  }
+  if (input.type === "approval") {
+    const metadata = input.metadata || {};
+    const review = metadata.review || {};
+    const hasReviewPayload = Boolean(
+      input.details
+      || metadata.draft
+      || review.draft
+      || metadata.command
+      || metadata.diff
+      || metadata.sections?.length
+      || review.sections?.length
+      || metadata.risks?.length
+      || review.risks?.length
+    );
+    if (!hasReviewPayload) {
+      return "Approval cards must include reviewable details, draft, diff, command, sections, or risks.";
+    }
+  }
+  return "";
+}
+
 function normalizeActions(actions) {
   const labels = {
     approve: "Approve",
@@ -119,6 +172,7 @@ function normalizeActions(actions) {
     investigate: "Investigate",
     more_like_this: "More like this",
     pass: "Pass",
+    request_changes: "Request changes",
     reject: "Reject",
     send: "Send",
     view: "View"
@@ -264,9 +318,10 @@ function versionPayload(req) {
 function nextStatus(action, card) {
   if (action === "archive") return "archived";
   if (action === "approve" || action === "send") return "approved";
-  if (action === "reject") return "rejected";
+  if (action === "reject" || action === "pass") return "rejected";
   if (action === "edit" || action === "request_changes") return "edited";
-  if (action === "answer" || action === "choose") return "responded";
+  if (action === "answer" || action === "choose" || action === "more_like_this") return "responded";
+  if (action === "investigate") return "in_progress";
   return card.status === "new" ? "viewed" : card.status;
 }
 
@@ -444,11 +499,15 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/update") {
+    runGit(["fetch", "origin"]);
     const before = gitMetadata();
+    const versionBehind = compareVersions(currentVersion, latestVersion) < 0;
+    if (!versionBehind && before.behind === 0) {
+      return json(res, 200, { ok: true, updated: false, before, after: before, output: "Already current." });
+    }
     if (before.dirty) {
       return json(res, 409, { error: "dirty_worktree", message: "Commit or stash local changes before updating.", before });
     }
-    runGit(["fetch", "origin"]);
     const pulled = runGit(["pull", "--ff-only"]);
     const after = gitMetadata();
     const updated = before.commit !== after.commit;
@@ -462,9 +521,22 @@ async function handleApi(req, res, url) {
 
   if (req.method === "POST" && url.pathname === "/api/cards") {
     const input = await readBody(req);
+    const validationError = validateCardInput(input, db.cards);
+    if (validationError) return badRequest(res, validationError);
     const card = normalizeCard(input);
     db.cards.unshift(card);
-    db.events.push({ id: id("event"), cardId: card.id, action: "created", payload: {}, createdAt: now() });
+    db.events.push({
+      id: id("event"),
+      cardId: card.id,
+      action: "created",
+      payload: {},
+      agent: card.agent,
+      project: card.project,
+      cardType: card.type,
+      cardTitle: card.title,
+      cardStatus: card.status,
+      createdAt: now()
+    });
     await writeDb(db);
     return json(res, 201, { card });
   }
@@ -505,18 +577,35 @@ async function handleApi(req, res, url) {
 
     if (req.method === "POST" && parts[3] === "actions") {
       const input = await readBody(req);
-      if (isResolved(card) && input.action !== "archive") {
+      if (isResolved(card)) {
         return json(res, 409, { error: "card_resolved", card });
       }
+      const actionConfig = normalizeActions(card.actions || []).find((action) => action.id === input.action);
+      const option = input.payload?.optionId
+        ? (card.options || []).find((item) => item.id === input.payload.optionId)
+          || (card.metadata?.comparison?.options || []).find((item) => item.id === input.payload.optionId)
+          || (card.metadata?.options || []).find((item) => item.id === input.payload.optionId)
+        : null;
       const event = {
         id: id("event"),
         cardId: card.id,
         action: input.action || "respond",
         payload: input.payload || {},
+        agent: card.agent,
+        project: card.project,
+        cardType: card.type,
+        cardTitle: card.title,
+        actionLabel: actionConfig?.label || input.action || "Respond",
+        option: option ? {
+          id: option.id,
+          label: option.label || option.title || option.id,
+          description: option.description || option.summary || ""
+        } : null,
         createdAt: now()
       };
       card.status = nextStatus(event.action, card);
       card.updatedAt = event.createdAt;
+      event.cardStatus = card.status;
       db.events.push(event);
       await writeDb(db);
       postCallback(card, event);
@@ -531,15 +620,19 @@ async function serveStatic(req, res, url) {
   const requested = url.pathname === "/" ? "/index.html" : url.pathname === "/favicon.ico" ? "/icon.svg" : url.pathname;
   const filePath = path.normalize(path.join(root, requested));
   if (!filePath.startsWith(root)) return notFound(res);
+  const headers = {
+    "content-type": mime[path.extname(filePath)] || "application/octet-stream",
+    "cache-control": "no-store"
+  };
 
   try {
     const content = await fs.readFile(filePath);
-    res.writeHead(200, { "content-type": mime[path.extname(filePath)] || "application/octet-stream" });
+    res.writeHead(200, headers);
     res.end(content);
   } catch {
     if (!path.extname(filePath)) {
       const index = await fs.readFile(path.join(root, "index.html"));
-      res.writeHead(200, { "content-type": mime[".html"] });
+      res.writeHead(200, { "content-type": mime[".html"], "cache-control": "no-store" });
       res.end(index);
     } else {
       notFound(res);
@@ -551,7 +644,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (url.pathname.startsWith("/api/")) {
-      await handleApi(req, res, url);
+      await queueApi(() => handleApi(req, res, url));
     } else {
       await serveStatic(req, res, url);
     }

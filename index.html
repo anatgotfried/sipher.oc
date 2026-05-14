@@ -61,7 +61,7 @@
           <div class="feed-header">
             <div>
               <h2 id="view-title">Needs Me</h2>
-              <p id="view-subtitle">Cards waiting for a decision, answer, or review.</p>
+              <p id="view-subtitle">Review, correct, or approve agent actions before they run.</p>
             </div>
             <div class="toolbar">
               <select id="type-filter" aria-label="Filter by card type">
@@ -73,14 +73,19 @@
                 <option value="briefing">Briefing</option>
                 <option value="comparison">Comparison</option>
               </select>
-              <button id="seed-demo" class="ghost-button" type="button">Seed demo</button>
+              <select id="project-filter" aria-label="Filter by project">
+                <option value="all">All projects</option>
+              </select>
+              <button id="seed-demo" class="ghost-button dev-only" type="button" hidden>Seed demo</button>
             </div>
           </div>
 
+          <div id="brief-summary" class="brief-summary" hidden></div>
+          <div id="task-progress" class="task-progress" hidden></div>
           <div id="cards" class="cards"></div>
           <div id="empty-state" class="empty-state" hidden>
             <h3>No cards here</h3>
-            <p>Create one with the CLI or seed the demo cards.</p>
+            <p>Agents can create cards through the API or CLI.</p>
           </div>
         </section>
 

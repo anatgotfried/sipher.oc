@@ -208,7 +208,8 @@ Core fields:
 - `title`: short user-facing title
 - `summary`: concise action context
 - `details`: optional deeper review context
-- `priority`: `low`, `medium`, or `high`
+- `priority`: required `low`, `medium`, or `high`
+- `neededAt`: optional ISO timestamp for when the human should act by; Needs Me sorts by this first
 - `project`: grouping label
 - `agent`: `{ "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" }`
 - `actions`: buttons such as approve, reject, edit, send, investigate
@@ -242,6 +243,8 @@ The examples are intentionally copyable:
 - [deploy-approval-card.json](examples/deploy-approval-card.json): Deploy Agent approval card with checks, release note, rollback, and risks
 
 Agent rule of thumb: one card has one primary owner in `agent`; cross-agent context belongs in `metadata.contributors` or `metadata.sourceCards`.
+
+To onboard an agent, start with [SIPHER_AGENT_PROMPT.md](SIPHER_AGENT_PROMPT.md). It tells agents what belongs in Sipher, what to avoid, how to batch approvals, and how to close the loop after a user decision.
 
 ## Implemented MVP
 

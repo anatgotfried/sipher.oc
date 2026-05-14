@@ -3,11 +3,13 @@ const state = {
   events: [],
   view: "needs-me",
   type: "all",
+  project: "all",
   selectedId: null,
   detailOpen: false,
   pendingAction: null,
   version: null,
   swipe: null,
+  mutedAgents: new Set(JSON.parse(localStorage.getItem("agentCardsMutedAgents") || "[]")),
   suppressClickUntil: 0,
   justHandled: new Set()
 };
@@ -15,11 +17,11 @@ const state = {
 const views = {
   "needs-me": {
     title: "Needs Me",
-    subtitle: "Cards waiting for a decision, answer, or review."
+    subtitle: "Review, correct, or approve agent actions before they run."
   },
   today: {
     title: "Today",
-    subtitle: "Recent cards, updates, briefings, and active workflows."
+    subtitle: "Daily brief, active decisions, and open loops for today."
   },
   projects: {
     title: "Projects",
@@ -32,8 +34,9 @@ const views = {
 };
 
 const actionable = new Set(["new", "waiting", "viewed", "in_progress", "edited"]);
-const archived = new Set(["completed", "dismissed", "expired", "archived", "approved", "rejected"]);
+const archived = new Set(["completed", "dismissed", "expired", "archived", "approved", "rejected", "responded"]);
 const resolved = new Set([...archived, "responded"]);
+const fallbackDailyActionLimit = 3;
 const actionLabels = {
   approve: "Approve",
   archive: "Archive",
@@ -45,6 +48,7 @@ const actionLabels = {
   pass: "Pass",
   reject: "Reject",
   send: "Send",
+  request_changes: "Request changes",
   view: "View"
 };
 const actionStyles = {
@@ -63,6 +67,7 @@ const actionProgressLabels = {
   investigate: "Opening investigation",
   more_like_this: "Saving preference",
   pass: "Passing",
+  request_changes: "Sending change request",
   reject: "Rejecting",
   send: "Sending"
 };
@@ -87,6 +92,7 @@ const actionIcons = {
   pass: "x-circle",
   reject: "x-circle",
   send: "send",
+  request_changes: "edit",
   view: "chevron-right"
 };
 
@@ -114,6 +120,7 @@ const icons = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const completionActions = new Set(["approve", "send", "reject", "answer", "choose", "archive", "pass", "request_changes", "edit"]);
 
 function escapeHtml(value = "") {
   return String(value)
@@ -156,11 +163,78 @@ function typeBadge(card) {
 }
 
 function cardStatus(card) {
+  if (card.status === "waiting") {
+    if (card.type === "approval") return "approval pending";
+    if (card.type === "question") return "needs answer";
+    if (["choice", "comparison"].includes(card.type)) return "needs decision";
+    if (card.type === "status") return "blocked";
+  }
+  if (card.status === "viewed") return "review opened";
+  if (card.status === "edited") return "changes requested";
   return String(card.status || "new").replaceAll("_", " ");
 }
 
 function isActionableCard(card) {
   return actionable.has(card.status) && !resolved.has(card.status);
+}
+
+function projectName(card) {
+  return card.project || "General";
+}
+
+function isDecisionCard(card) {
+  return ["approval", "choice", "question", "comparison"].includes(card.type);
+}
+
+function isMutedCard(card) {
+  return state.mutedAgents.has(card.agent?.id);
+}
+
+function persistMutedAgents() {
+  localStorage.setItem("agentCardsMutedAgents", JSON.stringify([...state.mutedAgents]));
+}
+
+function isDailyBriefCard(card) {
+  return card.type === "briefing" && projectName(card) === "Daily Brief";
+}
+
+function isNeedsMeCard(card) {
+  return isActionableCard(card) && !isDailyBriefCard(card);
+}
+
+function neededAt(card) {
+  const metadata = card.metadata || {};
+  const value = card.neededAt
+    || card.dueAt
+    || card.dueDate
+    || metadata.neededAt
+    || metadata.dueAt
+    || metadata.dueDate
+    || card.expiresAt;
+  const timestamp = value ? new Date(value).getTime() : NaN;
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function compareCards(a, b) {
+  const aNeeded = neededAt(a);
+  const bNeeded = neededAt(b);
+  if (aNeeded && bNeeded && aNeeded !== bNeeded) return aNeeded - bNeeded;
+  if (aNeeded && !bNeeded) return -1;
+  if (!aNeeded && bNeeded) return 1;
+  const priority = { high: 3, medium: 2, low: 1 };
+  return (priority[b.priority] || 0) - (priority[a.priority] || 0)
+    || new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+}
+
+function latestDailyBrief() {
+  return state.cards
+    .filter((card) => card.type === "briefing" && !archived.has(card.status) && projectName(card) === "Daily Brief")
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))[0];
+}
+
+function dailyActionLimit() {
+  const limit = Number(latestDailyBrief()?.metadata?.preferences?.maxApprovalBatch);
+  return Number.isFinite(limit) && limit > 0 ? Math.min(8, Math.max(1, Math.floor(limit))) : fallbackDailyActionLimit;
 }
 
 function latestEvent(cardId, action) {
@@ -204,22 +278,64 @@ function renderAgentAvatar(agent = {}, size = "small") {
 
 function visibleCards() {
   const byView = state.cards.filter((card) => {
-    if (state.view === "needs-me") return actionable.has(card.status) || state.justHandled.has(card.id);
+    if (isMutedCard(card) && state.view !== "archive") return false;
+    if (state.view === "needs-me") return isNeedsMeCard(card) || state.justHandled.has(card.id);
     if (state.view === "archive") return archived.has(card.status);
+    if (state.view === "today") return todayBriefCards().some((item) => item.id === card.id);
     return true;
   });
 
   const byType = state.type === "all" ? byView : byView.filter((card) => card.type === state.type);
+  const byProject = state.project === "all" ? byType : byType.filter((card) => projectName(card) === state.project);
 
-  return byType.sort((a, b) => {
-    const priority = { high: 3, medium: 2, low: 1 };
-    return (priority[b.priority] || 0) - (priority[a.priority] || 0)
-      || new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
-  });
+  return byProject.sort(compareCards);
+}
+
+function sortedOpenCards() {
+  return state.cards
+    .filter((card) => isNeedsMeCard(card) && !isMutedCard(card))
+    .sort(compareCards);
+}
+
+function todayBriefCards() {
+  return state.cards
+    .filter((card) => card.type === "briefing" && !archived.has(card.status) && projectName(card) === "Daily Brief" && !isMutedCard(card))
+    .sort(compareCards);
+}
+
+function dailyBriefCards() {
+  const brief = latestDailyBrief();
+  const sourceIds = brief?.metadata?.sourceCards || [];
+  const sourceDecisionCards = sourceIds
+    .map((cardId) => state.cards.find((card) => card.id === cardId))
+    .filter((card) => card && isActionableCard(card) && isDecisionCard(card));
+  const fallbackDecisionCards = sortedOpenCards()
+    .filter((card) => isDecisionCard(card) && !sourceDecisionCards.some((sourceCard) => sourceCard.id === card.id));
+  const contextCards = [
+    brief,
+    ...state.cards
+    .filter((card) => !archived.has(card.status) && card.type === "status" && !isMutedCard(card))
+      .slice()
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 1)
+  ].filter(Boolean);
+  const actionCards = [...sourceDecisionCards, ...fallbackDecisionCards].slice(0, dailyActionLimit());
+  return [...contextCards, ...actionCards]
+    .filter((card) => card && !archived.has(card.status))
+    .filter((card, index, cards) => cards.findIndex((item) => item.id === card.id) === index);
+}
+
+function scopedOpenCards() {
+  return sortedOpenCards().filter((card) => state.project === "all" || projectName(card) === state.project);
+}
+
+function dailyDecisionCount() {
+  return todayBriefCards().length;
 }
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
+    cache: "no-store",
     headers: { "content-type": "application/json", ...(options.headers || {}) },
     ...options
   });
@@ -240,7 +356,7 @@ async function load() {
     state.events = data.events;
     if (version) state.version = version;
     $(".status-dot").className = "status-dot online";
-    $("#api-status").textContent = "Live";
+    $("#api-status").textContent = "Local";
   } catch (error) {
     $(".status-dot").className = "status-dot offline";
     $("#api-status").textContent = "Offline";
@@ -280,6 +396,14 @@ function renderVersion() {
   button.classList.toggle("has-update", Boolean(version.updateAvailable));
   button.classList.toggle("is-stale", stale);
   banner.hidden = !stale && !updateAvailable;
+  if (!stale && !updateAvailable) {
+    bannerTitle.textContent = "";
+    bannerCopy.textContent = "";
+    updateButton.hidden = true;
+    updateButton.disabled = false;
+    updateButton.textContent = "Update";
+    return;
+  }
   bannerTitle.textContent = stale ? "Stale URL" : "Update available";
   bannerCopy.textContent = stale
     ? `This page was opened from ${version.requestUrl || "a non-canonical URL"}. Use ${version.canonicalUrl || "the canonical Agent Cards URL"} before claiming it is latest.`
@@ -319,16 +443,24 @@ async function respond(cardId, action, payload = {}) {
     style: actionConfig?.style || actionStyles[action] || "neutral"
   };
   render();
-  await wait(760);
-  await api(`/api/cards/${cardId}/actions`, {
-    method: "POST",
-    body: JSON.stringify({ action, payload })
-  });
-  state.pendingAction = null;
-  if (action !== "archive") state.justHandled.add(cardId);
-  await load();
-  state.selectedId = cardId;
-  renderDetail();
+  try {
+    await wait(760);
+    await api(`/api/cards/${cardId}/actions`, {
+      method: "POST",
+      body: JSON.stringify({ action, payload })
+    });
+    if (action !== "archive") state.justHandled.add(cardId);
+    await load();
+    state.selectedId = cardId;
+    renderDetail();
+  } catch (error) {
+    console.error(error);
+    $(".status-dot").className = "status-dot offline";
+    $("#api-status").textContent = "Action failed";
+  } finally {
+    state.pendingAction = null;
+    render();
+  }
 }
 
 async function updateCard(cardId, patch) {
@@ -342,14 +474,49 @@ async function updateCard(cardId, patch) {
 async function seedDemo() {
   await api("/api/demo/seed", { method: "POST" });
   await load();
+  const button = $("#seed-demo");
+  button.textContent = "Seeded";
+  setTimeout(() => {
+    button.textContent = "Seed demo";
+  }, 1200);
+}
+
+function projectOptions() {
+  return [...new Set(state.cards.map(projectName))].sort((a, b) => a.localeCompare(b));
+}
+
+function renderProjectFilter() {
+  const select = $("#project-filter");
+  select.hidden = state.view === "today";
+  if (state.view === "today" && state.project !== "all") state.project = "all";
+  const projects = projectOptions();
+  const valid = state.project === "all" || projects.includes(state.project);
+  if (!valid) state.project = "all";
+  select.innerHTML = [
+    `<option value="all">All projects</option>`,
+    ...projects.map((project) => `<option value="${escapeHtml(project)}">${escapeHtml(project)}</option>`)
+  ].join("");
+  select.value = state.project;
+}
+
+function renderBriefSummary() {
+  const node = $("#brief-summary");
+  node.hidden = true;
+  node.innerHTML = "";
 }
 
 function render() {
+  const completedToday = state.events.filter((event) => {
+    const actionDate = new Date(event.createdAt);
+    const today = new Date();
+    return completionActions.has(event.action) && actionDate.toDateString() === today.toDateString();
+  }).length;
   const counts = {
-    needs: state.cards.filter((card) => actionable.has(card.status)).length,
-    today: state.cards.length,
-    projects: new Set(state.cards.map((card) => card.project || "Inbox")).size,
-    archive: state.cards.filter((card) => archived.has(card.status)).length
+    needs: state.cards.filter((card) => isNeedsMeCard(card) && !isMutedCard(card)).length,
+    today: dailyDecisionCount(),
+    projects: new Set(state.cards.map(projectName)).size,
+    archive: state.cards.filter((card) => archived.has(card.status)).length,
+    completedToday
   };
 
   $("#needs-count").textContent = counts.needs;
@@ -362,9 +529,14 @@ function render() {
   });
   $("#app").classList.toggle("detail-open", state.detailOpen);
   renderVersion();
+  renderProjectFilter();
 
   $("#view-title").textContent = views[state.view].title;
   $("#view-subtitle").textContent = views[state.view].subtitle;
+  $("#type-filter").value = state.type;
+  $("#seed-demo").hidden = !new URLSearchParams(window.location.search).has("dev");
+  renderBriefSummary();
+  renderTaskProgress(counts);
 
   const cards = visibleCards();
   $("#cards").innerHTML = cards.map(renderCard).join("");
@@ -372,23 +544,48 @@ function render() {
   renderDetail();
 }
 
+function renderTaskProgress(counts) {
+  const node = $("#task-progress");
+  const show = state.view === "needs-me" || state.view === "projects";
+  if (!show) {
+    node.hidden = true;
+    node.innerHTML = "";
+    return;
+  }
+  const total = counts.needs + counts.completedToday;
+  const percent = total ? Math.round((counts.completedToday / total) * 100) : 100;
+  node.hidden = false;
+  node.innerHTML = `
+    <div>
+      <strong>${counts.needs ? `${counts.needs} left` : "Inbox clear"}</strong>
+      <span>${counts.completedToday} handled today</span>
+    </div>
+    <div class="task-progress-meter" aria-label="${percent}% complete">
+      <span style="width:${percent}%"></span>
+    </div>
+  `;
+}
+
 function renderCard(card) {
   const meta = typeMeta[card.type] || { accent: "slate" };
   const time = formatRelativeTime(card.updatedAt || card.createdAt);
   const pending = state.pendingAction?.cardId === card.id ? state.pendingAction : null;
+  const highRisk = card.type === "approval" && card.priority === "high";
   return `
-    <article class="card card--${escapeHtml(card.type)} accent-${escapeHtml(meta.accent)} ${state.selectedId === card.id ? "selected" : ""} ${pending ? "is-responding" : ""}" data-card-id="${escapeHtml(card.id)}">
+    <article class="card card--${escapeHtml(card.type)} accent-${escapeHtml(meta.accent)} ${highRisk ? "risk-high" : ""} ${state.selectedId === card.id ? "selected" : ""} ${pending ? "is-responding" : ""}" data-card-id="${escapeHtml(card.id)}">
       <div class="card-header">
         <div class="agent-line">
           ${renderAgentAvatar(card.agent)}
-          <span><strong>${escapeHtml(card.agent?.name || "Agent")}</strong><small>${escapeHtml(card.project || "Inbox")} · ${escapeHtml(time)}</small></span>
+          <span><strong>${escapeHtml(card.agent?.name || "Agent")}</strong><small>${escapeHtml(projectName(card))} · ${escapeHtml(time)}</small></span>
         </div>
         ${typeBadge(card)}
       </div>
       <h3>${escapeHtml(card.title)}</h3>
-      <p class="summary">${escapeHtml(card.summary)}</p>
+      ${card.type === "briefing" ? "" : `<p class="summary">${escapeHtml(card.summary)}</p>`}
+      ${renderDecisionFrame(card)}
       ${renderCardBody(card)}
       ${state.justHandled.has(card.id) ? `<div class="handled-note">Recorded. Review the event in the inspector.</div>` : ""}
+      ${renderSwipeHint(card)}
       <div class="meta-row">
         <span class="chip priority ${escapeHtml(card.priority || "low")}"><span class="risk-dot"></span>${escapeHtml(card.priority || "low")}</span>
         <span class="chip">${icon("clock")}${escapeHtml(cardStatus(card))}</span>
@@ -397,6 +594,57 @@ function renderCard(card) {
       ${pending ? renderActionOverlay(pending) : ""}
     </article>
   `;
+}
+
+function actionVerb(card) {
+  if (card.type === "approval") {
+    const action = (card.actions || []).map(normalizeAction).find((item) => ["send", "approve"].includes(item.id));
+    return action?.label || "Approve action";
+  }
+  if (card.type === "question") return "Answer blocker";
+  if (card.type === "choice") return "Choose preference";
+  if (card.type === "comparison") return "Choose path";
+  if (card.type === "status") return card.blocker ? "Review blocker" : "Inspect update";
+  return "Review";
+}
+
+function whyNow(card) {
+  const metadata = card.metadata || {};
+  const review = metadata.review || {};
+  if (metadata.handoff?.onSend) return metadata.handoff.onSend;
+  if (metadata.nextAgent) return `${card.agent?.name || "Agent"} will pass the decision to ${metadata.nextAgent}.`;
+  if (review.reason) return review.reason;
+  if (metadata.decision) return `Decision key: ${metadata.decision}.`;
+  if (card.expiresAt) return `Useful until ${formatTime(card.expiresAt)}.`;
+  return card.summary || "Waiting for human feedback before the agent continues.";
+}
+
+function primaryRisk(card) {
+  const metadata = card.metadata || {};
+  const review = metadata.review || {};
+  const risk = metadata.risks?.[0] || review.risks?.[0] || card.blocker;
+  if (risk) return risk;
+  if (card.priority === "high") return "High priority";
+  return "Low operational risk";
+}
+
+function renderDecisionFrame(card) {
+  if (!isDecisionCard(card) && card.type !== "status") return "";
+  return `
+    <div class="decision-frame">
+      <div><span>Agent wants to</span><strong>${escapeHtml(actionVerb(card))}</strong></div>
+      <div><span>Why now</span><strong>${escapeHtml(whyNow(card))}</strong></div>
+      <div><span>Risk</span><strong>${escapeHtml(primaryRisk(card))}</strong></div>
+    </div>
+  `;
+}
+
+function renderSwipeHint(card) {
+  if (!isActionableCard(card)) return "";
+  if (["choice", "comparison"].includes(card.type)) {
+    return `<div class="swipe-hint"><span>Swipe right to choose</span><span>Left to pass</span><span>Up for more like this</span></div>`;
+  }
+  return `<div class="swipe-hint"><span>Swipe sideways to archive</span></div>`;
 }
 
 function renderActionOverlay(pending) {
@@ -440,6 +688,8 @@ function renderCardBody(card) {
         <span class="option-radio"></span>
         <strong>${escapeHtml(option.title || option.label || option.id || "Option")}</strong>
         <span>${escapeHtml(option.description || "")}</span>
+        <em>Agent will ${escapeHtml(option.agentWill || option.outcome || inferOptionOutcome(card, option))}</em>
+        ${isActionableCard(card) ? "<b>Apply choice</b>" : ""}
       ${isActionableCard(card) ? "</button>" : "</div>"}
     `).join("");
     const selected = (card.options || []).find((option) => option.id === selectedOptionId);
@@ -447,7 +697,7 @@ function renderCardBody(card) {
       <div class="handled-note">Choice recorded: ${escapeHtml(selected.title || selected.label || selected.id)}</div>
     ` : "";
     if (!isActionableCard(card)) return `${result}<div class="option-strip">${options}</div>`;
-    return `<div class="option-strip">${options}</div>`;
+    return `<div class="option-strip">${options}</div>${renderPreferenceControls(card)}`;
   }
 
   if (card.type === "question") {
@@ -479,14 +729,116 @@ function renderCardBody(card) {
   }
 
   if (card.type === "briefing") {
-    return `<ul class="briefing-list">${(card.items || []).slice(0, 4).map((item) => `<li>${icon("check-circle")}<span>${escapeHtml(item)}</span></li>`).join("")}</ul>`;
+    return renderBriefing(card);
   }
 
   if (card.type === "comparison") {
-    return renderComparison(card, false);
+    return `${renderComparison(card, false)}${renderPreferenceControls(card)}`;
   }
 
   return "";
+}
+
+function renderPreferenceControls(card) {
+  if (!isActionableCard(card)) return "";
+  return `
+    <div class="preference-actions">
+      <button class="soft-button" data-action="more_like_this" data-card-id="${escapeHtml(card.id)}" type="button">${icon("sparkles")}Teach preference</button>
+      <button class="soft-button" data-action="pass" data-card-id="${escapeHtml(card.id)}" type="button">${icon("x-circle")}Pass</button>
+    </div>
+    <p class="learning-preview">Future rule preview: remember this preference for similar low-risk decisions.</p>
+  `;
+}
+
+function renderBriefing(card) {
+  const metadata = card.metadata || {};
+  const brief = metadata.dailyBrief || {};
+  const sections = metadata.sections || [];
+  if (brief.weather || brief.calendar || brief.emails?.length || brief.news?.length || brief.openItems || brief.projects?.length) {
+    return `
+      <div class="daily-brief-board">
+        ${brief.weather ? `
+          <section class="daily-tile weather-tile">
+            <div class="weather-icon">${escapeHtml(brief.weather.symbol || "☀")}</div>
+            <div>
+              <span class="weather-label">Weather</span>
+              <strong>${escapeHtml(brief.weather.temp || brief.weather.title || "Weather")}</strong>
+              <p>${escapeHtml(brief.weather.summary || "")}</p>
+            </div>
+          </section>
+        ` : ""}
+        ${brief.calendar ? `
+          <section class="daily-tile">
+            <span class="tile-icon">${icon("calendar")}</span>
+            <div>
+              <strong>${escapeHtml(brief.calendar.title || "Calendar")}</strong>
+              <p>${escapeHtml(brief.calendar.summary || "")}</p>
+            </div>
+          </section>
+        ` : ""}
+        ${brief.emails?.length ? `
+          <section class="daily-section">
+            <div class="daily-section-title">${icon("message")}<strong>Important email</strong></div>
+            ${brief.emails.slice(0, 3).map((item) => `
+              <article>
+                <strong>${escapeHtml(item.from || item.sender || "Agent")}: ${escapeHtml(item.subject || item.title || "Email")}</strong>
+                <p>${escapeHtml(item.summary || item.whyItMatters || "")}</p>
+              </article>
+            `).join("")}
+          </section>
+        ` : ""}
+        ${brief.openItems ? `
+          <section class="daily-tile">
+            <span class="tile-icon">${icon("inbox")}</span>
+            <div>
+              <strong>${escapeHtml(brief.openItems.title || "Needs Me")}</strong>
+              <p>${escapeHtml(brief.openItems.summary || "")}</p>
+            </div>
+          </section>
+        ` : ""}
+        ${brief.news?.length ? `
+          <section class="daily-section">
+            <div class="daily-section-title">${icon("file-text")}<strong>Decision-aware news</strong></div>
+            ${brief.news.slice(0, 3).map((item) => `
+              <article>
+                <strong>${escapeHtml(item.title || item)}</strong>
+                <p>${escapeHtml(item.whyItMatters || item.summary || "")}</p>
+              </article>
+            `).join("")}
+          </section>
+        ` : ""}
+        ${brief.projects?.length ? `
+          <section class="daily-section">
+            <div class="daily-section-title">${icon("folder")}<strong>Project pulse</strong></div>
+            <div class="project-brief-grid">
+              ${brief.projects.slice(0, 4).map((project) => `
+                <div>
+                  <strong>${escapeHtml(project.name || project.title || "Project")}</strong>
+                  <span>${escapeHtml(project.status || project.summary || "")}</span>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+        ` : ""}
+      </div>
+    `;
+  }
+  if (sections.length) {
+    return `
+      <div class="daily-brief-board">
+        ${sections.slice(0, 4).map((section) => `
+          <section class="daily-tile">
+            <span class="tile-icon">${icon(section.icon || "file-text")}</span>
+            <div>
+              <strong>${escapeHtml(section.title || "Brief")}</strong>
+              <p>${escapeHtml(section.body || section.summary || "")}</p>
+            </div>
+          </section>
+        `).join("")}
+      </div>
+    `;
+  }
+  return `<ul class="briefing-list">${(card.items || []).slice(0, 4).map((item) => `<li>${icon("check-circle")}<span>${escapeHtml(item)}</span></li>`).join("")}</ul>`;
 }
 
 function comparisonItems(card) {
@@ -494,20 +846,35 @@ function comparisonItems(card) {
   return card.options?.length ? card.options : metadata.comparison?.options || metadata.options || [];
 }
 
+function inferOptionOutcome(card, option = {}) {
+  const title = String(option.title || option.label || option.id || "this option").toLowerCase();
+  if (card.id === "calendar_conflict_choice") {
+    return title.includes("product")
+      ? "keep product review and move the contractor call."
+      : "keep the contractor call and ask product review for notes.";
+  }
+  if (card.type === "comparison") return `turn ${option.title || option.label || "this path"} into follow-up tasks.`;
+  return `continue with ${option.title || option.label || "this choice"}.`;
+}
+
 function renderComparison(card, detail = false) {
   const items = comparisonItems(card).slice(0, detail ? 4 : 3);
   if (!items.length) return "";
+  const choice = latestEvent(card.id, "choose");
+  const selectedOptionId = choice?.payload?.optionId;
   return `
     <div class="comparison-grid">
       ${items.map((item, index) => `
-        <div class="comparison-option ${item.recommended || index === 0 ? "recommended" : ""}">
+        ${isActionableCard(card) ? `<button class="comparison-option ${item.recommended || index === 0 ? "recommended" : ""}" data-action="choose" data-card-id="${escapeHtml(card.id)}" data-option-id="${escapeHtml(item.id || item.title || item.label || `option-${index}`)}" type="button">` : `<div class="comparison-option ${selectedOptionId === item.id ? "is-selected" : ""} ${item.recommended || index === 0 ? "recommended" : ""}">`}
           <div class="comparison-top">
             <strong>${escapeHtml(item.title || item.label || item.id || "Option")}</strong>
-            ${item.recommended || index === 0 ? `<span>${icon("check")}Best fit</span>` : ""}
+            ${selectedOptionId === item.id ? `<span>${icon("check")}Chosen</span>` : item.recommended || index === 0 ? `<span>${icon("check")}Best fit</span>` : ""}
           </div>
           <p>${escapeHtml(item.description || item.summary || "")}</p>
+          <em>Agent will ${escapeHtml(item.agentWill || item.outcome || inferOptionOutcome(card, item))}</em>
           ${item.meta || item.cost || item.risk ? `<small>${escapeHtml(item.meta || item.cost || item.risk)}</small>` : ""}
-        </div>
+          ${isActionableCard(card) ? "<b>Apply choice</b>" : ""}
+        ${isActionableCard(card) ? "</button>" : "</div>"}
       `).join("")}
     </div>
   `;
@@ -515,19 +882,28 @@ function renderComparison(card, detail = false) {
 
 function renderActions(card, options = {}) {
   if (!isActionableCard(card)) return "";
+  if (card.type === "approval" && !options.detail) {
+    return `
+      <div class="actions">
+        <button class="primary-button" data-open-card="${escapeHtml(card.id)}" type="button">${icon("file-text")}Review</button>
+        <button class="ghost-button" data-action="archive" data-card-id="${escapeHtml(card.id)}" type="button">${icon("archive")}Archive</button>
+      </div>
+    `;
+  }
   const actions = (card.actions || [])
     .map(normalizeAction)
     .filter((action) => action && !isHandledInline(card, action));
-  if (!actions.length) return "";
+  const renderedActions = actions.length ? actions : [];
   const hasArchive = actions.some((action) => action.id === "archive");
   const className = options.detail ? "actions detail-actions" : "actions";
   const disabled = state.pendingAction?.cardId === card.id ? " disabled" : "";
 
   return `
     <div class="${className}">
-      ${actions.map((action) => {
+      ${renderedActions.map((action) => {
         const className = action.style === "danger" ? "danger-button" : action.style === "primary" ? "primary-button" : "soft-button";
-        return `<button class="${className}" data-action="${escapeHtml(action.id)}" data-card-id="${escapeHtml(card.id)}" type="button"${disabled}>${icon(actionIcons[action.id] || "chevron-right")}${escapeHtml(action.label)}</button>`;
+        const changeAttr = ["edit", "request_changes"].includes(action.id) ? ` data-request-changes="true"` : "";
+        return `<button class="${className}" data-action="${escapeHtml(action.id)}" data-card-id="${escapeHtml(card.id)}" type="button"${disabled}${changeAttr}>${icon(actionIcons[action.id] || "chevron-right")}${escapeHtml(action.label)}</button>`;
       }).join("")}
       ${hasArchive || options.detail ? "" : `<button class="ghost-button" data-action="archive" data-card-id="${escapeHtml(card.id)}" type="button"${disabled}>${icon("archive")}Archive</button>`}
     </div>
@@ -537,12 +913,15 @@ function renderActions(card, options = {}) {
 function isHandledInline(card, action) {
   if (action.id === "view") return true;
   if (card.type === "choice" && action.id === "choose") return true;
+  if (card.type === "comparison" && action.id === "choose") return true;
   if (card.type === "question" && action.id === "answer") return true;
   return false;
 }
 
 function renderDetail() {
-  const card = state.cards.find((item) => item.id === state.selectedId) || visibleCards()[0];
+  const cards = visibleCards();
+  const useDefaultSelection = window.matchMedia("(min-width: 761px)").matches;
+  const card = cards.find((item) => item.id === state.selectedId) || ((state.detailOpen || useDefaultSelection) ? cards[0] : null);
   if (!card) {
     $("#detail-empty").hidden = false;
     $("#detail-card").hidden = true;
@@ -556,9 +935,12 @@ function renderDetail() {
     <div class="detail-agent">
       <div class="agent-line">
         ${renderAgentAvatar(card.agent, "large")}
-        <span><strong>${escapeHtml(card.agent?.name || "Agent")}</strong><small>${escapeHtml(card.project || "Inbox")} · ${formatTime(card.updatedAt || card.createdAt)}</small></span>
+        <span><strong>${escapeHtml(card.agent?.name || "Agent")}</strong><small>${escapeHtml(projectName(card))} · ${formatTime(card.updatedAt || card.createdAt)}</small></span>
       </div>
-      <button class="close-detail" type="button" aria-label="Close detail">${icon("x-circle")}Close</button>
+      <div class="detail-agent-actions">
+        <button class="agent-mute-button" data-agent-mute="${escapeHtml(card.agent?.id || "")}" type="button">${icon("x-circle")}${state.mutedAgents.has(card.agent?.id) ? "Unmute agent" : "Mute agent"}</button>
+        <button class="close-detail" type="button" aria-label="Close detail">${icon("x-circle")}Close</button>
+      </div>
     </div>
     <h2>${escapeHtml(card.title)}</h2>
     <p class="summary">${escapeHtml(card.summary)}</p>
@@ -570,6 +952,7 @@ function renderDetail() {
       <h3>Context</h3>
       <p>${escapeHtml(card.details || "No extra detail provided.")}</p>
     </section>
+    ${renderAccountabilityPanel(card)}
     ${renderReviewPayload(card)}
     ${card.type === "comparison" ? `<section class="detail-section"><h3>Comparison</h3>${renderComparison(card, true)}</section>` : ""}
     ${renderActions(card, { detail: true })}
@@ -591,6 +974,29 @@ function renderDetail() {
         </div>
       </section>
     </details>
+  `;
+}
+
+function renderAccountabilityPanel(card) {
+  const events = state.events.filter((event) => event.cardId === card.id);
+  const lastEvent = events.at(-1);
+  return `
+    <section class="detail-section">
+      <h3>Agent Accountability</h3>
+      <div class="accountability-grid">
+        <div><span>Agent proposed</span><strong>${escapeHtml(actionVerb(card))}</strong></div>
+        <div><span>Evidence</span><strong>${escapeHtml(whyNow(card))}</strong></div>
+        <div><span>Risk reason</span><strong>${escapeHtml(primaryRisk(card))}</strong></div>
+        <div><span>Last event</span><strong>${escapeHtml(lastEvent ? `${lastEvent.action} · ${formatRelativeTime(lastEvent.createdAt)}` : "No event yet")}</strong></div>
+      </div>
+    </section>
+    <section class="detail-section">
+      <h3>Teach This Agent</h3>
+      <div class="preference-actions detail-preference-actions">
+        <button class="soft-button" data-action="more_like_this" data-card-id="${escapeHtml(card.id)}" type="button">${icon("sparkles")}Prefer this pattern</button>
+        <button class="soft-button" data-action="request_changes" data-card-id="${escapeHtml(card.id)}" data-request-changes="true" type="button">${icon("edit")}Correct agent</button>
+      </div>
+    </section>
   `;
 }
 
@@ -652,7 +1058,27 @@ function renderReviewPayload(card) {
 }
 
 function canSwipeArchive(card) {
-  return card && card.status !== "archived" && card.status !== "expired";
+  return card && !resolved.has(card.status);
+}
+
+function preferredOptionId(card) {
+  const items = card.type === "comparison" ? comparisonItems(card) : (card.options || []);
+  const item = items.find((option) => option.recommended) || items[0];
+  return item?.id || item?.title || item?.label || null;
+}
+
+function swipeActionFor(card, dx, dy) {
+  const horizontal = Math.abs(dx) > 96 && Math.abs(dx) > Math.abs(dy) * 1.25;
+  const upward = -dy > 86 && -dy > Math.abs(dx) * 1.15;
+  if (!horizontal && !upward) return null;
+  if (["choice", "comparison"].includes(card.type)) {
+    if (upward) return { action: "more_like_this", payload: { source: "swipe", gesture: "up" } };
+    if (dx < 0) return { action: "pass", payload: { source: "swipe", gesture: "left" } };
+    const optionId = preferredOptionId(card);
+    return { action: "choose", payload: { source: "swipe", gesture: "right", optionId } };
+  }
+  if (horizontal) return { action: "archive", payload: { source: "swipe", gesture: dx > 0 ? "right" : "left" } };
+  return null;
 }
 
 function interactiveTarget(target) {
@@ -690,7 +1116,54 @@ document.addEventListener("click", async (event) => {
     } else {
       const needsConfirmation = card?.type === "approval" && card?.priority === "high" && ["approve", "send"].includes(action);
       if (needsConfirmation && !confirm("Confirm this high-stakes action?")) return;
-      await respond(cardId, action, {});
+      if (actionButton.dataset.requestChanges === "true") {
+        const requestChanges = prompt("What should the agent change?");
+        if (requestChanges === null) return;
+        await respond(cardId, action, { requestChanges: requestChanges.trim() });
+      } else {
+        await respond(cardId, action, {});
+      }
+    }
+    return;
+  }
+
+  const closeDetail = event.target.closest(".close-detail");
+  if (closeDetail) {
+    event.preventDefault();
+    state.selectedId = null;
+    state.detailOpen = false;
+    render();
+    return;
+  }
+
+  const muteButton = event.target.closest("[data-agent-mute]");
+  if (muteButton) {
+    event.preventDefault();
+    const agentId = muteButton.dataset.agentMute;
+    if (!agentId) return;
+    if (state.mutedAgents.has(agentId)) {
+      state.mutedAgents.delete(agentId);
+    } else {
+      state.mutedAgents.add(agentId);
+      state.selectedId = null;
+      state.detailOpen = false;
+    }
+    persistMutedAgents();
+    render();
+    return;
+  }
+
+  const openButton = event.target.closest("[data-open-card]");
+  if (openButton) {
+    event.preventDefault();
+    const card = state.cards.find((item) => item.id === openButton.dataset.openCard);
+    if (!card) return;
+    state.selectedId = card.id;
+    state.detailOpen = true;
+    if (isActionableCard(card) && card.status !== "viewed") {
+      await updateCard(card.id, { status: "viewed" });
+    } else {
+      render();
     }
     return;
   }
@@ -703,6 +1176,17 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const projectJump = event.target.closest("[data-project-jump]");
+  if (projectJump) {
+    state.project = projectJump.dataset.projectJump;
+    state.view = "today";
+    state.detailOpen = false;
+    render();
+    return;
+  }
+
+  if (interactiveTarget(event.target)) return;
+
   const cardNode = event.target.closest(".card[data-card-id]");
   if (cardNode) {
     const card = state.cards.find((item) => item.id === cardNode.dataset.cardId);
@@ -713,12 +1197,6 @@ document.addEventListener("click", async (event) => {
     } else {
       render();
     }
-    return;
-  }
-
-  if (event.target.closest(".close-detail")) {
-    state.detailOpen = false;
-    render();
     return;
   }
 
@@ -750,14 +1228,18 @@ document.addEventListener("pointermove", (event) => {
   if (!swipe || swipe.pointerId !== event.pointerId) return;
   swipe.dx = event.clientX - swipe.startX;
   swipe.dy = event.clientY - swipe.startY;
+  const card = state.cards.find((item) => item.id === swipe.cardId);
   const horizontal = Math.abs(swipe.dx) > 14 && Math.abs(swipe.dx) > Math.abs(swipe.dy) * 1.25;
-  if (!horizontal && !swipe.active) return;
+  const upward = card && ["choice", "comparison"].includes(card.type) && -swipe.dy > 14 && -swipe.dy > Math.abs(swipe.dx) * 1.15;
+  if (!horizontal && !upward && !swipe.active) return;
   swipe.active = true;
   event.preventDefault();
-  const clamped = Math.max(-150, Math.min(150, swipe.dx));
+  const clamped = horizontal ? Math.max(-150, Math.min(150, swipe.dx)) : Math.max(-120, Math.min(0, swipe.dy));
   swipe.node.classList.add("is-swiping");
-  swipe.node.classList.toggle("swipe-archive-ready", Math.abs(swipe.dx) > 96);
-  swipe.node.style.transform = `translateX(${clamped}px) rotate(${clamped / 32}deg)`;
+  swipe.node.classList.toggle("swipe-archive-ready", Boolean(swipeActionFor(card, swipe.dx, swipe.dy)));
+  swipe.node.style.transform = horizontal
+    ? `translateX(${clamped}px) rotate(${clamped / 32}deg)`
+    : `translateY(${clamped}px) scale(${1 - Math.abs(clamped) / 1200})`;
   swipe.node.style.opacity = String(Math.max(0.55, 1 - Math.abs(clamped) / 260));
 });
 
@@ -767,17 +1249,20 @@ document.addEventListener("pointerup", async (event) => {
   state.swipe = null;
   swipe.node.releasePointerCapture?.(event.pointerId);
 
-  const shouldArchive = swipe.active && Math.abs(swipe.dx) > 96 && Math.abs(swipe.dx) > Math.abs(swipe.dy) * 1.25;
-  if (!shouldArchive) {
+  const card = state.cards.find((item) => item.id === swipe.cardId);
+  const swipeAction = swipe.active ? swipeActionFor(card, swipe.dx, swipe.dy) : null;
+  if (!swipeAction) {
     resetSwipeNode(swipe.node);
     return;
   }
 
   state.suppressClickUntil = Date.now() + 450;
   swipe.node.classList.add("swipe-archive-ready");
-  swipe.node.style.transform = `translateX(${swipe.dx > 0 ? 120 : -120}%) rotate(${swipe.dx > 0 ? 8 : -8}deg)`;
+  swipe.node.style.transform = swipeAction.payload.gesture === "up"
+    ? "translateY(-120%) scale(0.98)"
+    : `translateX(${swipe.dx > 0 ? 120 : -120}%) rotate(${swipe.dx > 0 ? 8 : -8}deg)`;
   swipe.node.style.opacity = "0";
-  await respond(swipe.cardId, "archive", { source: "swipe" });
+  await respond(swipe.cardId, swipeAction.action, swipeAction.payload);
 });
 
 document.addEventListener("pointercancel", (event) => {
@@ -794,13 +1279,19 @@ document.addEventListener("submit", async (event) => {
   const cardId = form.dataset.questionForm;
   const card = state.cards.find((item) => item.id === cardId);
   if (!card || !isActionableCard(card)) return;
-  const answer = new FormData(form).get("answer");
+  const answer = String(form.elements.answer?.value || "").trim();
+  if (card.input?.required && !answer) return;
   if (state.pendingAction) return;
   await respond(cardId, "answer", { answer });
 });
 
 $("#type-filter").addEventListener("change", (event) => {
   state.type = event.target.value;
+  render();
+});
+
+$("#project-filter").addEventListener("change", (event) => {
+  state.project = event.target.value;
   render();
 });
 
