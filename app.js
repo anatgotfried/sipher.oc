@@ -11,7 +11,8 @@ const state = {
   swipe: null,
   mutedAgents: new Set(JSON.parse(localStorage.getItem("agentCardsMutedAgents") || "[]")),
   suppressClickUntil: 0,
-  justHandled: new Set()
+  justHandled: new Set(),
+  pendingSelections: {}
 };
 
 const views = {
@@ -449,7 +450,12 @@ async function respond(cardId, action, payload = {}) {
       method: "POST",
       body: JSON.stringify({ action, payload })
     });
-    if (action !== "archive") state.justHandled.add(cardId);
+    if (action === "archive") {
+      state.justHandled.delete(cardId);
+    } else {
+      state.justHandled.add(cardId);
+    }
+    delete state.pendingSelections[cardId];
     await load();
     state.selectedId = cardId;
     renderDetail();
@@ -683,21 +689,23 @@ function renderCardBody(card) {
   if (card.type === "choice") {
     const choice = latestEvent(card.id, "choose");
     const selectedOptionId = choice?.payload?.optionId;
+    const pendingOptionId = isActionableCard(card) ? state.pendingSelections[card.id] : null;
     const options = (card.options || []).slice(0, 4).map((option) => `
-      ${isActionableCard(card) ? `<button class="option-card" data-action="choose" data-card-id="${escapeHtml(card.id)}" data-option-id="${escapeHtml(option.id)}" type="button">` : `<div class="option-card option-card-readonly ${selectedOptionId === option.id ? "is-selected" : ""}">`}
+      ${isActionableCard(card) ? `<button class="option-card${pendingOptionId === option.id ? " is-selected" : ""}" data-select-option="${escapeHtml(card.id)}" data-option-id="${escapeHtml(option.id)}" type="button">` : `<div class="option-card option-card-readonly ${selectedOptionId === option.id ? "is-selected" : ""}">`}
         <span class="option-radio"></span>
         <strong>${escapeHtml(option.title || option.label || option.id || "Option")}</strong>
         <span>${escapeHtml(option.description || "")}</span>
         <em>Agent will ${escapeHtml(option.agentWill || option.outcome || inferOptionOutcome(card, option))}</em>
-        ${isActionableCard(card) ? "<b>Apply choice</b>" : ""}
+        ${isActionableCard(card) ? "<b>Select</b>" : ""}
       ${isActionableCard(card) ? "</button>" : "</div>"}
     `).join("");
     const selected = (card.options || []).find((option) => option.id === selectedOptionId);
     const result = selected ? `
       <div class="handled-note">Choice recorded: ${escapeHtml(selected.title || selected.label || selected.id)}</div>
     ` : "";
+    const submitButton = pendingOptionId ? `<div class="actions"><button class="primary-button" data-action="choose" data-card-id="${escapeHtml(card.id)}" data-option-id="${escapeHtml(pendingOptionId)}" type="button">${icon("check")}Submit choice</button></div>` : "";
     if (!isActionableCard(card)) return `${result}<div class="option-strip">${options}</div>`;
-    return `<div class="option-strip">${options}</div>${renderPreferenceControls(card)}`;
+    return `<div class="option-strip">${options}</div>${submitButton}${renderPreferenceControls(card)}`;
   }
 
   if (card.type === "question") {
@@ -733,7 +741,9 @@ function renderCardBody(card) {
   }
 
   if (card.type === "comparison") {
-    return `${renderComparison(card, false)}${renderPreferenceControls(card)}`;
+    const pendingOptionId = isActionableCard(card) ? state.pendingSelections[card.id] : null;
+    const submitButton = pendingOptionId ? `<div class="actions"><button class="primary-button" data-action="choose" data-card-id="${escapeHtml(card.id)}" data-option-id="${escapeHtml(pendingOptionId)}" type="button">${icon("check")}Submit choice</button></div>` : "";
+    return `${renderComparison(card, false)}${submitButton}${renderPreferenceControls(card)}`;
   }
 
   return "";
@@ -862,26 +872,36 @@ function renderComparison(card, detail = false) {
   if (!items.length) return "";
   const choice = latestEvent(card.id, "choose");
   const selectedOptionId = choice?.payload?.optionId;
+  const pendingOptionId = isActionableCard(card) ? state.pendingSelections[card.id] : null;
   return `
     <div class="comparison-grid">
-      ${items.map((item, index) => `
-        ${isActionableCard(card) ? `<button class="comparison-option ${item.recommended || index === 0 ? "recommended" : ""}" data-action="choose" data-card-id="${escapeHtml(card.id)}" data-option-id="${escapeHtml(item.id || item.title || item.label || `option-${index}`)}" type="button">` : `<div class="comparison-option ${selectedOptionId === item.id ? "is-selected" : ""} ${item.recommended || index === 0 ? "recommended" : ""}">`}
-          <div class="comparison-top">
-            <strong>${escapeHtml(item.title || item.label || item.id || "Option")}</strong>
-            ${selectedOptionId === item.id ? `<span>${icon("check")}Chosen</span>` : item.recommended || index === 0 ? `<span>${icon("check")}Best fit</span>` : ""}
-          </div>
-          <p>${escapeHtml(item.description || item.summary || "")}</p>
-          <em>Agent will ${escapeHtml(item.agentWill || item.outcome || inferOptionOutcome(card, item))}</em>
-          ${item.meta || item.cost || item.risk ? `<small>${escapeHtml(item.meta || item.cost || item.risk)}</small>` : ""}
-          ${isActionableCard(card) ? "<b>Apply choice</b>" : ""}
-        ${isActionableCard(card) ? "</button>" : "</div>"}
-      `).join("")}
+      ${items.map((item, index) => {
+        const optionId = item.id || item.title || item.label || `option-${index}`;
+        const isPending = isActionableCard(card) && pendingOptionId === optionId;
+        const isChosen = !isActionableCard(card) && selectedOptionId === item.id;
+        return `
+          ${isActionableCard(card) ? `<button class="comparison-option${isPending ? " is-selected" : ""} ${item.recommended || index === 0 ? "recommended" : ""}" data-select-option="${escapeHtml(card.id)}" data-option-id="${escapeHtml(optionId)}" type="button">` : `<div class="comparison-option ${isChosen ? "is-selected" : ""} ${item.recommended || index === 0 ? "recommended" : ""}">`}
+            <div class="comparison-top">
+              <strong>${escapeHtml(item.title || item.label || item.id || "Option")}</strong>
+              ${isChosen ? `<span>${icon("check")}Chosen</span>` : item.recommended || index === 0 ? `<span>${icon("check")}Best fit</span>` : ""}
+            </div>
+            <p>${escapeHtml(item.description || item.summary || "")}</p>
+            <em>Agent will ${escapeHtml(item.agentWill || item.outcome || inferOptionOutcome(card, item))}</em>
+            ${item.meta || item.cost || item.risk ? `<small>${escapeHtml(item.meta || item.cost || item.risk)}</small>` : ""}
+            ${isActionableCard(card) ? "<b>Select</b>" : ""}
+          ${isActionableCard(card) ? "</button>" : "</div>"}
+        `;
+      }).join("")}
     </div>
   `;
 }
 
 function renderActions(card, options = {}) {
-  if (!isActionableCard(card)) return "";
+  if (!isActionableCard(card)) {
+    if (!state.justHandled.has(card.id)) return "";
+    const disabled = state.pendingAction?.cardId === card.id ? " disabled" : "";
+    return `<div class="actions"><button class="ghost-button" data-action="archive" data-card-id="${escapeHtml(card.id)}" type="button"${disabled}>${icon("archive")}Archive</button></div>`;
+  }
   if (card.type === "approval" && !options.detail) {
     return `
       <div class="actions">
@@ -1058,7 +1078,7 @@ function renderReviewPayload(card) {
 }
 
 function canSwipeArchive(card) {
-  return card && !resolved.has(card.status);
+  return card && (!resolved.has(card.status) || state.justHandled.has(card.id));
 }
 
 function preferredOptionId(card) {
@@ -1071,7 +1091,7 @@ function swipeActionFor(card, dx, dy) {
   const horizontal = Math.abs(dx) > 96 && Math.abs(dx) > Math.abs(dy) * 1.25;
   const upward = -dy > 86 && -dy > Math.abs(dx) * 1.15;
   if (!horizontal && !upward) return null;
-  if (["choice", "comparison"].includes(card.type)) {
+  if (["choice", "comparison"].includes(card.type) && isActionableCard(card)) {
     if (upward) return { action: "more_like_this", payload: { source: "swipe", gesture: "up" } };
     if (dx < 0) return { action: "pass", payload: { source: "swipe", gesture: "left" } };
     const optionId = preferredOptionId(card);
@@ -1096,6 +1116,17 @@ document.addEventListener("click", async (event) => {
   if (Date.now() < state.suppressClickUntil) {
     event.preventDefault();
     event.stopPropagation();
+    return;
+  }
+
+  const selectButton = event.target.closest("[data-select-option][data-option-id]");
+  if (selectButton) {
+    event.stopPropagation();
+    const cardId = selectButton.dataset.selectOption;
+    const card = state.cards.find((item) => item.id === cardId);
+    if (!card || !isActionableCard(card)) return;
+    state.pendingSelections[cardId] = selectButton.dataset.optionId;
+    render();
     return;
   }
 
