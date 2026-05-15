@@ -25,8 +25,10 @@ Usage:
   agent-cards reset --yes
   agent-cards simulate [scenario]
   agent-cards list
+  agent-cards show <card-id>
   agent-cards create <card.json>
   agent-cards update <card-id> <patch.json>
+  agent-cards delete <card-id>
   agent-cards action <card-id> <action> [payload.json]
 
 Environment:
@@ -73,6 +75,21 @@ async function main() {
 
   if (command === "simulate") {
     const scenario = args[0] || "realistic";
+    const scenarioFile = path.join(__dirname, "..", "simulations", `${scenario}.json`);
+    let standaloneCards = null;
+    try {
+      standaloneCards = await readJson(scenarioFile);
+    } catch {
+      standaloneCards = null;
+    }
+    if (Array.isArray(standaloneCards)) {
+      const created = await createCards(standaloneCards);
+      console.log(`Simulated ${created.length} ${scenario} cards.`);
+      for (const card of created) {
+        console.log(`${card.id}\t${card.type}\t${card.title}`);
+      }
+      return;
+    }
     const scenarios = await readJson(path.join(__dirname, "..", "simulations", "agent-scenarios.json"));
     if (scenario === "list") {
       console.log(Object.keys(scenarios).join("\n"));
@@ -107,6 +124,13 @@ async function main() {
     return;
   }
 
+  if (command === "show") {
+    if (!args[0]) throw new Error("Usage: agent-cards show <card-id>");
+    const result = await request(`/api/cards/${args[0]}`);
+    console.log(JSON.stringify(result.card, null, 2));
+    return;
+  }
+
   if (command === "update") {
     if (!args[0] || !args[1]) throw new Error("Usage: agent-cards update <card-id> <patch.json>");
     const patch = await readJson(args[1]);
@@ -115,6 +139,13 @@ async function main() {
       body: JSON.stringify(patch)
     });
     console.log(`Updated ${result.card.id}`);
+    return;
+  }
+
+  if (command === "delete") {
+    if (!args[0]) throw new Error("Usage: agent-cards delete <card-id>");
+    const result = await request(`/api/cards/${args[0]}`, { method: "DELETE" });
+    console.log(`Deleted ${result.card.id}`);
     return;
   }
 

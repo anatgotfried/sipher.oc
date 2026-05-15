@@ -8,8 +8,10 @@ const { spawn } = require("node:child_process");
 const pkg = require("./package.json");
 
 const root = __dirname;
-const dataDir = path.join(root, "data");
-const dbPath = path.join(dataDir, "agent-cards.json");
+const dbPath = process.env.AGENT_CARDS_DB_PATH
+  ? path.resolve(process.env.AGENT_CARDS_DB_PATH)
+  : path.join(root, "data", "agent-cards.json");
+const dataDir = path.dirname(dbPath);
 const port = Number(process.env.PORT || 4173);
 const currentVersion = pkg.version || "0.0.0";
 const latestVersion = process.env.AGENT_CARDS_LATEST_VERSION || currentVersion;
@@ -25,6 +27,7 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".png": "image/png",
   ".svg": "image/svg+xml; charset=utf-8",
   ".txt": "text/plain; charset=utf-8"
 };
@@ -141,7 +144,7 @@ function validateCardInput(input, existingCards = []) {
   if (!input.priority || !["low", "medium", "high"].includes(input.priority)) {
     return "Cards must include priority as low, medium, or high.";
   }
-  if (input.type === "approval") {
+  if (input.type === "approval" || input.type === "email_approval") {
     const metadata = input.metadata || {};
     const review = metadata.review || {};
     const hasReviewPayload = Boolean(
@@ -168,17 +171,21 @@ function normalizeActions(actions) {
     archive: "Archive",
     answer: "Answer",
     choose: "Choose",
-    edit: "Edit",
+    complete: "Complete",
+    edit: "Request changes",
     investigate: "Investigate",
+    mark_read: "Mark as read",
     more_like_this: "More like this",
     pass: "Pass",
     request_changes: "Request changes",
     reject: "Reject",
+    save_draft: "Save as draft",
     send: "Send",
     view: "View"
   };
   const styles = {
     approve: "primary",
+    complete: "primary",
     send: "primary",
     more_like_this: "primary",
     reject: "danger"
@@ -192,10 +199,16 @@ function normalizeActions(actions) {
       };
     }
     if (!action || typeof action !== "object") return null;
+    const actionId = action.id || action.action || "respond";
+    const label = action.label && action.label.toLowerCase() !== "edit"
+      ? action.label
+      : labels[actionId] || titleize(actionId);
     return {
-      id: action.id || action.action || "respond",
-      label: action.label || labels[action.id] || titleize(action.id || action.action || "respond"),
-      style: action.style || styles[action.id] || "neutral"
+      id: actionId,
+      label,
+      style: action.style || styles[actionId] || "neutral",
+      consequential: Boolean(action.consequential),
+      confirmLabel: action.confirmLabel || ""
     };
   }).filter(Boolean);
 }
@@ -250,6 +263,10 @@ function gitMetadata() {
   };
 }
 
+function refreshGitMetadata() {
+  git(["fetch", "--quiet", "origin"]);
+}
+
 function runGit(args) {
   return execFileSync("git", args, {
     cwd: root,
@@ -279,6 +296,7 @@ function requestOrigin(req) {
 }
 
 function versionPayload(req) {
+  refreshGitMetadata();
   const gitInfo = gitMetadata();
   const versionBehind = compareVersions(currentVersion, latestVersion) < 0;
   const gitBehind = gitInfo.behind > 0;
@@ -318,15 +336,19 @@ function versionPayload(req) {
 function nextStatus(action, card) {
   if (action === "archive") return "archived";
   if (action === "approve" || action === "send") return "approved";
+  if (action === "complete") return "completed";
+  if (action === "mark_read") return "completed";
+  if (action === "save_draft") return "completed";
   if (action === "reject" || action === "pass") return "rejected";
-  if (action === "edit" || action === "request_changes") return "edited";
-  if (action === "answer" || action === "choose" || action === "more_like_this") return "responded";
+  if (action === "edit" || action === "request_changes") return "waiting_on_agent";
+  if (action === "answer" || action === "choose") return "responded";
+  if (action === "more_like_this") return card.status;
   if (action === "investigate") return "in_progress";
   return card.status === "new" ? "viewed" : card.status;
 }
 
 function isResolved(card) {
-  return ["approved", "archived", "completed", "dismissed", "expired", "rejected", "responded"].includes(card.status);
+  return ["approved", "archived", "completed", "dismissed", "expired", "rejected", "responded", "waiting_on_agent", "changes_requested"].includes(card.status);
 }
 
 function shouldExpire(card, timestamp = Date.now()) {
@@ -373,8 +395,8 @@ function demoCards() {
   return [
     normalizeCard({
       id: "demo_send_email",
-      type: "approval",
-      title: "Send weekly summary to Eden?",
+      type: "email_approval",
+      title: "Send weekly summary to Riley?",
       summary: "Hermes drafted the update and needs approval before sending.",
       details: "The email goes to an external recipient. Review the recipient, subject, and draft body before approving.",
       priority: "high",
@@ -382,16 +404,39 @@ function demoCards() {
       agent: hermes,
       actions: [
         { id: "send", label: "Send", style: "primary" },
-        { id: "edit", label: "Edit", style: "neutral" },
-        { id: "reject", label: "Reject", style: "danger" }
+        { id: "save_draft", label: "Save as draft", style: "neutral" }
       ],
       metadata: {
         draft: {
-          to: "Eden Shoham <eden@example.com>",
+          to: "Riley Stone <riley@example.com>",
           subject: "Weekly update",
-          body: "Hi Eden,\n\nHere's your weekly update.\n\n- Key progress on Project Atlas\n- Hiring update\n- Risks and blockers\n\nLet me know if you'd like anything else.\n\n- Anat"
+          body: "Hi Riley,\n\nHere's your weekly update.\n\n- Key progress on Project Atlas\n- Hiring update\n- Risks and blockers\n\nLet me know if you'd like anything else.\n\n- Alex"
         },
         risks: ["Medium risk"]
+      },
+      createdAt: time,
+      updatedAt: time
+    }),
+    normalizeCard({
+      id: "demo_regular_approval",
+      type: "approval",
+      title: "Approve docs cleanup?",
+      summary: "OpenClaw wants to simplify the integration docs before the next agent starts using them.",
+      details: "This lets OpenClaw rewrite the README integration section for clarity.",
+      priority: "medium",
+      project: "Agent Cards",
+      agent: openclaw,
+      actions: [
+        { id: "approve", label: "Approve", style: "primary" },
+        { id: "reject", label: "Not approve", style: "neutral" }
+      ],
+      metadata: {
+        sections: [
+          {
+            title: "Docs cleanup",
+            body: "Simplify the agent integration instructions and remove outdated approval examples."
+          }
+        ]
       },
       createdAt: time,
       updatedAt: time
@@ -439,10 +484,7 @@ function demoCards() {
       agent: openclaw,
       progress: 62,
       blocker: "No blocker",
-      actions: [
-        { id: "investigate", label: "Investigate", style: "neutral" },
-        { id: "approve", label: "Looks good", style: "primary" }
-      ]
+      actions: []
     }),
     normalizeCard({
       id: "demo_comparison",
@@ -459,8 +501,7 @@ function demoCards() {
         { id: "vercel", title: "Vercel", description: "Great static hosting, API persistence needs storage.", meta: "Needs DB" }
       ],
       actions: [
-        { id: "choose", label: "Choose", style: "primary" },
-        { id: "investigate", label: "Compare more", style: "neutral" }
+        { id: "choose", label: "Choose", style: "primary" }
       ]
     }),
     normalizeCard({
@@ -477,6 +518,86 @@ function demoCards() {
         "Calendar has a 30-minute conflict at 09:30.",
         "Agent Cards local API is ready for first integration tests."
       ],
+      metadata: {
+        dailyBrief: {
+          greeting: {
+            name: "Alex",
+            salutation: "Good morning",
+            subtitle: "Three things need attention before 10:00."
+          },
+          cards: [
+            {
+              id: "weather",
+              enabled: true,
+              data: {
+                tempC: 22,
+                tempF: 72,
+                unit: "C",
+                title: "Clear evening",
+                text: "Clear and comfortable after 17:30, with light wind and low rain risk.",
+                location: "Sample City",
+                condition: "clear",
+                timeOfDay: "evening",
+                feelsLike: "21°C",
+                wind: "8 km/h",
+                humidity: "47%",
+                rainChance: "5%"
+              }
+            },
+            {
+              id: "priorities",
+              enabled: true,
+              data: {
+                items: [
+                  { title: "Choose Agent Cards hosting path", summary: "This decides how agents and phone access will reach the local feed.", color: "purple", cardId: "demo_weekend" },
+                  { title: "Choose the best hosting option", summary: "OpenClaw compared low-maintenance deployment paths and needs a selection.", color: "green", cardId: "demo_comparison" },
+                  { title: "Send weekly summary to Riley?", summary: "Hermes drafted the family logistics note and needs a send or hold decision.", color: "blue", cardId: "demo_send_email" }
+                ]
+              }
+            },
+            {
+              id: "newsfeed",
+              enabled: true,
+              data: {
+                items: [
+                  {
+                    title: "OpenAI launches Deployment Company",
+                    summary: "OpenAI launched a new Deployment Company to help organizations build and roll out AI systems inside core workflows. The daily-brief signal is clear: enterprise AI is moving from model access to operational implementation.",
+                    source: "OpenAI, May 11, 2026",
+                    url: "https://openai.com/index/openai-launches-the-deployment-company/"
+                  },
+                  {
+                    title: "Anthropic partners with Gates Foundation",
+                    summary: "Anthropic announced a $200 million Gates Foundation partnership using Claude credits, grant funding, and technical support for health, education, and economic mobility programs. It is a useful sign that major AI labs are packaging deployment around measurable workflows, not just chat features.",
+                    source: "Anthropic, May 14, 2026",
+                    url: "https://www.anthropic.com/news/gates-foundation-partnership"
+                  },
+                  {
+                    title: "Google brings Gemini Intelligence to Android",
+                    summary: "Google introduced Gemini Intelligence as a more proactive AI layer across Android apps and devices. For Sipher, the relevant pattern is mobile agents becoming part of the operating surface, with briefings and actions expected to travel across phone, watch, car, and laptop.",
+                    source: "Google, May 12, 2026",
+                    url: "https://blog.google/products-and-platforms/platforms/android/gemini-intelligence/"
+                  }
+                ]
+              }
+            }
+          ],
+          weather: {
+            tempC: 22,
+            tempF: 72,
+            unit: "C",
+            title: "Clear evening",
+            text: "Clear and comfortable after 17:30, with light wind and low rain risk.",
+            location: "Sample City",
+            condition: "clear",
+            timeOfDay: "evening",
+            feelsLike: "21°C",
+            wind: "8 km/h",
+            humidity: "47%",
+            rainChance: "5%"
+          }
+        }
+      },
       actions: [
         { id: "investigate", label: "Investigate", style: "primary" },
         { id: "archive", label: "Archive", style: "neutral" }
@@ -561,8 +682,13 @@ async function handleApi(req, res, url) {
   }
 
   if (parts[0] === "api" && parts[1] === "cards" && parts[2]) {
-    const card = db.cards.find((item) => item.id === parts[2]);
+    const cardIndex = db.cards.findIndex((item) => item.id === parts[2]);
+    const card = db.cards[cardIndex];
     if (!card) return notFound(res);
+
+    if (req.method === "GET" && parts.length === 3) {
+      return json(res, 200, { card });
+    }
 
     if (req.method === "PATCH" && parts.length === 3) {
       const patch = await readBody(req);
@@ -575,10 +701,31 @@ async function handleApi(req, res, url) {
       return json(res, 200, { card });
     }
 
+    if (req.method === "DELETE" && parts.length === 3) {
+      const [deleted] = db.cards.splice(cardIndex, 1);
+      db.events.push({
+        id: id("event"),
+        cardId: deleted.id,
+        action: "deleted",
+        payload: {},
+        agent: deleted.agent,
+        project: deleted.project,
+        cardType: deleted.type,
+        cardTitle: deleted.title,
+        cardStatus: deleted.status,
+        createdAt: now()
+      });
+      await writeDb(db);
+      return json(res, 200, { deleted: true, card: deleted });
+    }
+
     if (req.method === "POST" && parts[3] === "actions") {
       const input = await readBody(req);
       if (isResolved(card) && input.action !== "archive") {
         return json(res, 409, { error: "card_resolved", card });
+      }
+      if (["edit", "request_changes"].includes(input.action) && !String(input.payload?.requestChanges || "").trim()) {
+        return badRequest(res, "Request changes actions must include requestChanges text.");
       }
       const actionConfig = normalizeActions(card.actions || []).find((action) => action.id === input.action);
       const option = input.payload?.optionId
@@ -617,7 +764,7 @@ async function handleApi(req, res, url) {
 }
 
 async function serveStatic(req, res, url) {
-  const requested = url.pathname === "/" ? "/index.html" : url.pathname === "/favicon.ico" ? "/icon.svg" : url.pathname;
+  const requested = url.pathname === "/" ? "/index.html" : url.pathname === "/favicon.ico" ? "/icon-192.png" : url.pathname;
   const filePath = path.normalize(path.join(root, requested));
   if (!filePath.startsWith(root)) return notFound(res);
   const headers = {
@@ -649,6 +796,9 @@ const server = http.createServer(async (req, res) => {
       await serveStatic(req, res, url);
     }
   } catch (error) {
+    if (["Invalid JSON", "Body too large"].includes(error.message)) {
+      return badRequest(res, error.message);
+    }
     json(res, 500, { error: error.message });
   }
 });

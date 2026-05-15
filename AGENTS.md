@@ -14,6 +14,21 @@ npm start
 
 Open `http://localhost:4173`.
 
+For phone/Home Screen use, expose the app with Tailscale Serve and send the Tailscale HTTPS link, not localhost:
+
+```bash
+npm start
+tailscale serve --bg 4173
+tailscale serve status
+export AGENT_CARDS_URL="https://<machine-name>.<tailnet-name>.ts.net"
+export AGENT_CARDS_CANONICAL_URL="$AGENT_CARDS_URL"
+curl -fsS "$AGENT_CARDS_URL/api/version"
+```
+
+User-facing link format: `https://<machine-name>.<tailnet-name>.ts.net/?view=today`.
+
+To add Sipher to iPhone Home Screen: connect the phone to Tailscale, open the Tailscale URL in Safari, Share, Add to Home Screen. The icon comes from `apple-touch-icon.png` plus `manifest.webmanifest` icons.
+
 Seed demo cards:
 
 ```bash
@@ -50,9 +65,10 @@ node --check app.js
 node --check cli/agent-cards.js
 npm run seed
 npm run list
+npm test
 ```
 
-Expected result: five demo cards are listed, including approval, choice, question, status, and briefing cards.
+Expected result: demo cards are listed, and the test suite passes static asset checks plus browser workflow/layout checks.
 
 ## Agent Integration Rules
 
@@ -61,6 +77,8 @@ Read `AGENT_INTEGRATION.md` before creating cards.
 Approval cards must be reviewable. If the agent asks the user to approve an email, file change, command, publish action, purchase, or scheduling action, include the exact draft, diff, command, recipient, risk, or attachment in `details` or `metadata`.
 
 Multiple agents may write into the same Sipher feed. Each card must have one primary owner in `agent`, stable `agent.id`, a clear `project`, and a clear next action. Use `metadata.sourceCards` or `metadata.contributors` for cross-agent context instead of vague shared ownership.
+
+Agents can create, list, view, update, act on, archive, and delete cards through the HTTP API or CLI. Use `DELETE /api/cards/<id>` only for cards created in error; use the `archive` action for normal clearing. Today cards are controlled by patching the daily brief card's `metadata.dailyBrief.cards` entries with `enabled: true/false`.
 
 Bad approval card:
 
@@ -84,9 +102,9 @@ Good approval card:
   "actions": ["send", "edit", "reject"],
   "metadata": {
     "draft": {
-      "to": "Eden <eden@example.com>",
+      "to": "Riley <riley@example.com>",
       "subject": "Summer camp weekly summary",
-      "body": "Hi Eden,\n\nHere are the confirmed dates..."
+      "body": "Hi Riley,\n\nHere are the confirmed dates..."
     },
     "risks": ["External recipient"]
   }
@@ -101,6 +119,8 @@ Good approval card:
 - `app.js`: browser state, rendering, and card interactions
 - `server.js`: dependency-free Node HTTP API and static server
 - `cli/agent-cards.js`: agent-facing CLI
+- `tests/*.spec.js`: Playwright workflow and layout tests
+- `tests/*.test.js`: Node static tests
 - `examples/*.json`: card payload examples
 - `data/agent-cards.json`: local runtime data, intentionally gitignored
 - `README.md`: user and API docs

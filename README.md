@@ -1,6 +1,23 @@
 # Sipher Agent Cards
 
-![Sipher Agent Cards desktop UI](assets/sipher-agent-cards-desktop.png)
+<p align="center">
+  <img src="assets/github/sipher-today-fullscreen.png" alt="Sipher Today desktop brief with weather, priorities, and newsfeed" width="100%">
+</p>
+
+## iOS Preview
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/github/sipher-ios-today.png" alt="Sipher Today on iPhone" width="220"></td>
+    <td align="center"><img src="assets/github/sipher-ios-needs-me.png" alt="Sipher Needs Me on iPhone" width="220"></td>
+    <td align="center"><img src="assets/github/sipher-ios-archive.png" alt="Sipher Archive on iPhone" width="220"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Today</sub></td>
+    <td align="center"><sub>Needs Me</sub></td>
+    <td align="center"><sub>Archive</sub></td>
+  </tr>
+</table>
 
 [![Node 18+](https://img.shields.io/badge/node-18%2B-3c873a)](https://nodejs.org)
 [![Local first](https://img.shields.io/badge/local--first-yes-007aff)](#why-sipher)
@@ -60,6 +77,7 @@ Run the basic verification path:
 node --check server.js
 node --check app.js
 node --check cli/agent-cards.js
+npm test
 npm run seed
 npm run list
 curl http://localhost:4173/api/version
@@ -123,7 +141,7 @@ AGENT_CARDS_CANONICAL_URL="https://<machine-name>.<tailnet-name>.ts.net" npm sta
 
 ## Private Access With Tailscale
 
-Use Tailscale Serve when Sipher should be available from your phone, tablet, or another tailnet-connected machine.
+Use Tailscale Serve when Sipher should be available from your phone, tablet, or another tailnet-connected machine. This is required for a useful phone/Home Screen workflow: `localhost` only works on the Mac running Sipher, so agents must not send `http://localhost:4173` to the user.
 
 ```bash
 npm start
@@ -138,7 +156,55 @@ export AGENT_CARDS_URL="https://<machine-name>.<tailnet-name>.ts.net"
 export AGENT_CARDS_CANONICAL_URL="$AGENT_CARDS_URL"
 ```
 
-Operational rule: keep Tailscale Funnel off until Sipher has app-level authentication and action protection.
+Verify the exact private URL before sharing it:
+
+```bash
+curl -fsS "$AGENT_CARDS_URL/api/version"
+```
+
+The persistent user-facing link is:
+
+```text
+https://<machine-name>.<tailnet-name>.ts.net/?view=today
+```
+
+Agents should send that link, not localhost. Markdown and HTML examples:
+
+```md
+[Open Sipher](https://<machine-name>.<tailnet-name>.ts.net/?view=today)
+```
+
+```html
+<a href="https://<machine-name>.<tailnet-name>.ts.net/?view=today">Open Sipher</a>
+```
+
+Operational rule: keep Tailscale Funnel off until Sipher has app-level authentication and action protection. Use tailnet-only Tailscale Serve for the private daily-use link.
+
+### Add To Home Screen
+
+On iPhone or iPad:
+
+1. Make sure the device is connected to the same Tailscale tailnet.
+2. Open Safari.
+3. Visit `https://<machine-name>.<tailnet-name>.ts.net/?view=today`.
+4. Tap Share.
+5. Tap Add to Home Screen.
+6. Keep the name `Sipher`, then tap Add.
+
+Sipher already includes the required Home Screen icon assets and tags:
+
+- `apple-touch-icon.png` for iOS Home Screen.
+- `icon-192.png` and `icon-512.png` for the web app manifest.
+- `manifest.webmanifest` with `display: "standalone"` and `start_url: "/?view=today"`.
+- `index.html` links for `apple-touch-icon`, favicon, and manifest.
+
+If the icon does not appear, verify these URLs through the Tailscale URL, not localhost:
+
+```bash
+curl -I "$AGENT_CARDS_URL/apple-touch-icon.png"
+curl -I "$AGENT_CARDS_URL/icon-192.png"
+curl -I "$AGENT_CARDS_URL/manifest.webmanifest"
+```
 
 ## CLI
 
@@ -149,13 +215,16 @@ node cli/agent-cards.js simulate multi-agent
 node cli/agent-cards.js simulate edge
 node cli/agent-cards.js simulate list
 node cli/agent-cards.js list
+node cli/agent-cards.js show <card-id>
 node cli/agent-cards.js reset --yes
 node cli/agent-cards.js create examples/approval-card.json
 node cli/agent-cards.js create examples/choice-card.json
 node cli/agent-cards.js create examples/multi-agent-briefing.json
 node cli/agent-cards.js create examples/openclaw-comparison-card.json
 node cli/agent-cards.js create examples/deploy-approval-card.json
+node cli/agent-cards.js update <card-id> patch.json
 node cli/agent-cards.js action demo_send_email send
+node cli/agent-cards.js delete <card-id>
 ```
 
 Reset is intentionally an agent/operator command, not a primary user control in the UI.
@@ -176,6 +245,26 @@ List cards and events:
 
 ```bash
 curl http://localhost:4173/api/cards
+```
+
+View one card:
+
+```bash
+curl http://localhost:4173/api/cards/<card-id>
+```
+
+Patch a card:
+
+```bash
+curl -X PATCH http://localhost:4173/api/cards/<card-id> \
+  -H 'content-type: application/json' \
+  -d '{"summary":"Updated by the agent","priority":"high"}'
+```
+
+Delete a card that was created in error:
+
+```bash
+curl -X DELETE http://localhost:4173/api/cards/<card-id>
 ```
 
 Reset local cards and event history:
@@ -200,18 +289,29 @@ curl -X POST http://localhost:4173/api/cards/<card-id>/actions \
 
 If a card includes `callbackUrl`, Sipher posts `{ card, event }` after an action is recorded.
 
+Agent control summary:
+
+- Add cards with `POST /api/cards`.
+- Read the feed with `GET /api/cards` and one card with `GET /api/cards/<card-id>`.
+- Update existing cards with `PATCH /api/cards/<card-id>`.
+- Remove cards created in error with `DELETE /api/cards/<card-id>`.
+- Archive normal completed/cleared cards by recording action `archive`.
+- Enable or disable Today native cards by patching the daily brief card's `metadata.dailyBrief.cards` entries.
+
 ## Card Schema
 
 Core fields:
 
-- `type`: `approval`, `choice`, `question`, `status`, `briefing`, or `comparison`
+- `type`: `approval`, `email_approval`, `choice`, `question`, `status`, `checklist`, `briefing`, or `comparison`
 - `title`: short user-facing title
 - `summary`: concise action context
 - `details`: optional deeper review context
 - `priority`: required `low`, `medium`, or `high`
 - `neededAt`: optional ISO timestamp for when the human should act by; Needs Me sorts by this first
+
+Use `choice` for a simple pick from similar options. Use `comparison` when the agent has evaluated tradeoffs, costs, risks, or recommends one path.
 - `project`: grouping label
-- `agent`: `{ "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" }`
+- `agent`: `{ "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" }`; if no image is provided or it fails to load, Sipher shows the first letter of `agent.name`
 - `actions`: buttons such as approve, reject, edit, send, investigate
 - `options`: choice-card options
 - `input`: question-card input metadata
@@ -225,6 +325,48 @@ When `expiresAt` passes, Sipher marks unresolved cards `expired`, records an `ex
 Approval cards must be reviewable. If an agent asks you to approve an email, file change, command, purchase, publish action, or scheduling action, it must include the exact content being approved in `details` or `metadata`.
 
 See [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md) for payload examples and lifecycle rules.
+
+## Today Native Cards
+
+The `Today` view is curated by the daily brief card. Agents should create or patch one `briefing` card with `project: "Daily Brief"` and put Today-native cards in `metadata.dailyBrief.cards`.
+
+Supported native card ids:
+
+- `weather`
+- `priorities`
+- `newsfeed`
+- `focus`
+- `email`
+- `calendar`
+- `openItems`
+
+If `metadata.dailyBrief.cards` is present, Sipher renders only entries with `"enabled": true`. If it is omitted, Sipher falls back to legacy `metadata.dailyBrief.weather`, `emails`, `calendar`, `openItems`, `projects`, and `news/newsfeed` fields.
+
+Weather card data can include `tempC`, `tempF`, `unit`, `condition`, `timeOfDay`, `feelsLike`, `wind`, `humidity`, and `rainChance`. Sipher chooses the generated weather image from `condition + timeOfDay`, keeps temperature/location/text as live UI, and renders the requested unit plus the alternate unit when available.
+
+Today priorities should represent items that must be handled today. Put a real `neededAt`, `dueAt`, or `dueDate` on linked cards or priority items; undated action cards belong in `Needs Me`, not Today.
+
+## Testing
+
+The suite is intentionally split:
+
+```bash
+npm run test:static
+npm run test:today
+npm test
+```
+
+`test:static` checks generated weather asset coverage and key responsive CSS contracts. `test:today` starts an isolated Playwright server on port `4174` using `/tmp/sipher-agent-cards-playwright.json`, so browser tests do not mutate the live local feed. It covers agent workflows, API error paths, Today card enable/disable behavior, individual delete behavior, and weather layout across desktop/mobile scenarios.
+
+## Publication Checklist
+
+Before making a fork, branch, or repository public:
+
+- Keep `.env` local. Publish only `.env.example`, which contains variable names and no secrets.
+- Keep `data/agent-cards*.json`, `output/`, `test-results/`, and `archive/` out of git.
+- Use generic demo names and `.example` email addresses in `examples/`, `simulations/`, tests, and screenshots.
+- Regenerate README screenshots from sanitized demo data before publishing UI changes.
+- If a branch was previously pushed with private screenshots or personal demo data, squash-merge a clean commit and delete the old branch before making the repo public.
 
 ## Multi-Agent Example
 
@@ -255,7 +397,10 @@ To onboard an agent, start with [SIPHER_AGENT_PROMPT.md](SIPHER_AGENT_PROMPT.md)
 - Local JSON persistence in `data/agent-cards.json`
 - Structured event history
 - Callback webhook hook
-- Agent CLI, examples, and simulation fixtures
+- Agent CLI with create, list, show, update, action, delete, seed, reset, and simulation commands
+- Curated Today native cards controlled by `metadata.dailyBrief.cards`
+- Generated responsive weather imagery for clear, cloudy, rainy, stormy, hazy, and snowy states
+- Playwright and Node test suites for weather layout, agent workflow, and API error paths
 - Version/freshness metadata for agent verification
 
 ## Project Shape

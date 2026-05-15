@@ -14,11 +14,6 @@
       "id": "choose",
       "label": "Choose",
       "style": "primary"
-    },
-    {
-      "id": "investigate",
-      "label": "Compare more",
-      "style": "neutral"
     }
   ],
   "options": [

@@ -2,7 +2,7 @@
   "realistic": [
     {
       "type": "approval",
-      "title": "Send weekly summary to Eden?",
+      "title": "Send weekly summary to Riley?",
       "summary": "Draft ready — covers dates, pickup logistics, and what to pack.",
       "details": "This sends an external message. Confirm recipient, subject, body, and risks before approving.",
       "priority": "medium",
@@ -15,9 +15,9 @@
       ],
       "metadata": {
         "draft": {
-          "to": "Eden <eden@example.com>",
+          "to": "Riley <riley@example.com>",
           "subject": "Summer camp weekly summary",
-          "body": "Hi Eden,\n\nQuick summary for this week:\n\n- Camp runs Sunday through Thursday, 08:30-14:00.\n- Pickup is at the north gate unless it rains.\n- Please pack a hat, water bottle, sunscreen, and a change of clothes.\n\nCan you confirm you saw this?\n\nThanks,\nAnat"
+          "body": "Hi Riley,\n\nQuick summary for this week:\n\n- Camp runs Sunday through Thursday, 08:30-14:00.\n- Pickup is at the north gate unless it rains.\n- Please pack a hat, water bottle, sunscreen, and a change of clothes.\n\nCan you confirm you saw this?\n\nThanks,\nAlex"
         },
         "risks": [
           "External recipient",
@@ -65,8 +65,8 @@
       "actions": ["choose"],
       "options": [
         {
-          "id": "anat-os",
-          "label": "Anat OS",
+          "id": "personal-os",
+          "label": "Personal OS",
           "description": "Memory, skills, kanban, proactive loop"
         },
         {
@@ -97,11 +97,11 @@
     },
     {
       "type": "status",
-      "title": "Anat OS — build status",
+      "title": "Personal OS — build status",
       "summary": "Current sprint progress across all layers.",
       "details": "Memory: 96%, Skills: core done, Kanban: migrating from Linear, Proactive loop: MVP ready.",
       "priority": "medium",
-      "project": "Anat OS",
+      "project": "Personal OS",
       "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
       "actions": ["view", "archive"],
       "progress": 78,
@@ -147,6 +147,70 @@
         "Deploy Agent: preview passed checks and is waiting for promotion approval."
       ],
       "metadata": {
+        "dailyBrief": {
+          "greeting": {
+            "name": "Alex",
+            "salutation": "Good evening",
+            "subtitle": "Email, hosting, and production promotion need explicit input."
+          },
+          "cards": [
+            { "id": "weather", "enabled": true },
+            {
+              "id": "priorities",
+              "enabled": true,
+              "data": {
+                "items": [
+                  { "title": "Choose Agent Cards hosting path", "color": "purple" },
+                  { "title": "Choose the best hosting option", "color": "green" },
+                  { "title": "Send weekly summary to Riley?", "color": "blue" }
+                ]
+              }
+            },
+            {
+              "id": "newsfeed",
+              "enabled": true,
+              "data": {
+                "items": [
+                  { "title": "Production preview is ready", "summary": "Deploy Agent passed checks and prepared rollback notes." },
+                  { "title": "Hosting choice unlocks phone access", "summary": "OpenClaw recommends a private URL across devices." }
+                ]
+              }
+            }
+          ],
+          "weather": {
+            "temp": "22°",
+            "title": "Clear evening",
+            "text": "Good window for errands after 17:30.",
+            "location": "Sample City",
+            "condition": "clear",
+            "timeOfDay": "evening"
+          },
+          "calendar": {
+            "title": "One conflict tomorrow",
+            "summary": "Calendar Agent needs a preference before moving either hold."
+          },
+          "openItems": {
+            "title": "3 decisions queued",
+            "summary": "Email, hosting, and production promotion need explicit input."
+          },
+          "emails": [
+            {
+              "from": "Hermes",
+              "subject": "Contractor outreach",
+              "summary": "Draft ready. Needs send, edit, or hold."
+            }
+          ],
+          "projects": [
+            {
+              "name": "Sipher",
+              "status": "Promotion approval waiting on release-risk review."
+            },
+            {
+              "name": "Agent Cards",
+              "status": "Hosting choice and implementation checklist are active."
+            }
+          ]
+        },
         "sourceCards": [
           "hermes_contractor_outreach",
           "openclaw_hosting_choice",
@@ -172,9 +236,9 @@
       ],
       "metadata": {
         "draft": {
-          "to": "Jordan Lee <jordan@example.com>",
+          "to": "Casey Rivera <casey@example.com>",
           "subject": "Availability for a small build project",
-          "body": "Hi Jordan,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAnat"
+          "body": "Hi Casey,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAlex"
         },
         "risks": [
           "External recipient",
@@ -196,8 +260,7 @@
       "project": "Agent Cards",
       "agent": { "id": "openclaw", "name": "OpenClaw" },
       "actions": [
-        { "id": "choose", "label": "Choose", "style": "primary" },
-        { "id": "investigate", "label": "Compare more", "style": "neutral" }
+        { "id": "choose", "label": "Choose", "style": "primary" }
       ],
       "options": [
         {
@@ -234,15 +297,32 @@
       "priority": "medium",
       "project": "Agent Cards",
       "agent": { "id": "atlas", "name": "Atlas" },
-      "actions": [
-        { "id": "investigate", "label": "Inspect queue", "style": "primary" },
-        { "id": "archive", "label": "Archive", "style": "neutral" }
-      ],
+      "actions": [],
       "progress": 68,
       "blocker": "Needs comments decision",
       "metadata": {
         "completed": ["schema cleanup", "event replay notes"],
         "blocked": ["comments vs no-comments decision"]
+      }
+    },
+    {
+      "id": "openclaw_integration_checklist",
+      "type": "checklist",
+      "title": "Agent Cards integration checklist",
+      "summary": "OpenClaw is tracking the next concrete setup steps after the hosting choice.",
+      "details": "Use this to see what the agent has finished, what is waiting, and which task needs a human decision.",
+      "priority": "medium",
+      "project": "Agent Cards",
+      "agent": { "id": "openclaw", "name": "OpenClaw" },
+      "actions": [
+        { "id": "complete", "label": "Complete", "style": "primary" }
+      ],
+      "metadata": {
+        "checklist": [
+          { "id": "schema", "title": "Validate card schema", "status": "done", "detail": "Approval, choice, question, and briefing payloads pass." },
+          { "id": "tailnet", "title": "Confirm private URL", "status": "todo", "detail": "Depends on hosting choice." },
+          { "id": "callbacks", "title": "Wire callback listener", "status": "todo", "detail": "Records user decisions back to the owning agent." }
+        ]
       }
     },
     {

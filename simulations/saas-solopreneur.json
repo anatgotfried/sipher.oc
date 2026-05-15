@@ -1,0 +1,243 @@
+[
+  {
+    "id": "saas_morning_brief",
+    "type": "briefing",
+    "title": "Founder morning brief",
+    "summary": "Revenue is steady, one churn risk needs outreach, and today's launch copy is ready for approval.",
+    "details": "A focused daily summary for a solo SaaS founder running product, support, growth, and billing.",
+    "status": "waiting",
+    "priority": "medium",
+    "project": "Daily Brief",
+    "agent": { "id": "briefing-agent", "name": "Briefing Agent" },
+    "actions": ["mark_read"],
+    "items": [
+      "MRR is $18,420, up $310 from yesterday after two upgrades and one new annual customer.",
+      "One account with 46 seats has not used the product in 12 days and should get a personal check-in.",
+      "The new onboarding email can go live after you approve the final copy.",
+      "Support volume is light: four open tickets, none older than one business day."
+    ],
+    "metadata": {
+      "dailyBrief": {
+        "greeting": {
+          "name": "Alex",
+          "salutation": "Good morning",
+          "subtitle": "Revenue is steady; one churn risk needs attention."
+        },
+        "cards": [
+          {
+            "id": "weather",
+            "enabled": true,
+            "data": {
+              "tempC": 22,
+              "tempF": 72,
+              "unit": "C",
+              "title": "Clear evening",
+              "text": "Clear and comfortable after 17:30, with light wind and low rain risk.",
+              "location": "Sample City",
+              "condition": "clear",
+              "timeOfDay": "evening",
+              "feelsLike": "21°C",
+              "wind": "8 km/h",
+              "humidity": "47%",
+              "rainChance": "5%"
+            }
+          },
+          {
+            "id": "priorities",
+            "enabled": true,
+            "data": {
+              "items": [
+                { "title": "Send churn-risk check-in", "summary": "Acme Ops went quiet after onboarding. A personal note may restart usage before renewal risk grows.", "color": "purple", "cardId": "saas_email_approval_churn" },
+                { "title": "Choose pricing experiment", "summary": "Growth has three test paths ready. Pick one so the agent can use today's maker block.", "color": "green", "cardId": "saas_comparison_pricing" },
+                { "title": "Deploy billing export fix", "summary": "The timezone patch is ready and low risk. Approval unblocks the billing export fix today.", "color": "blue", "cardId": "saas_approval_deploy_fix" }
+              ]
+            }
+          },
+          {
+            "id": "newsfeed",
+            "enabled": true,
+            "data": {
+              "items": [
+                { "title": "Revenue is up $310", "summary": "Two upgrades and one annual customer offset one downgrade." },
+                { "title": "Support queue is light", "summary": "Four open tickets, none older than one business day." }
+              ]
+            }
+          }
+        ],
+        "openItems": {
+          "title": "3 founder decisions",
+          "summary": "Approve onboarding copy, pick a pricing test, and answer one enterprise security question."
+        },
+        "projects": [
+          { "name": "Retention", "status": "Churn-risk account needs a personal note today." },
+          { "name": "Growth", "status": "Pricing test is ready once you choose the variant." },
+          { "name": "Product", "status": "Billing export bug is isolated and deployable." }
+        ]
+      }
+    }
+  },
+  {
+    "id": "saas_email_approval_churn",
+    "type": "email_approval",
+    "title": "Send churn-risk check-in to Acme Ops?",
+    "summary": "Customer Success drafted a personal note for an account that went quiet after onboarding.",
+    "details": "This sends an external email to a customer champion. The goal is to restart usage before renewal risk grows.",
+    "status": "waiting",
+    "priority": "high",
+    "neededAt": "2026-05-15T15:30:00+03:00",
+    "project": "Retention",
+    "agent": { "id": "customer-success", "name": "Customer Success" },
+    "actions": ["send", "save_draft"],
+    "metadata": {
+      "draft": {
+        "to": "Taylor Morgan <taylor@acmeops.example>",
+        "subject": "Quick check-in on your Sipher rollout",
+        "body": "Hi Taylor,\n\nI noticed the Acme team has not used the workspace much since the first onboarding session.\n\nWould it help if I set up a 20-minute working session this week to tune the agent cards around your support workflow?\n\nIf the timing is not right, I can also send a short setup checklist your team can use async.\n\n- Alex"
+      },
+      "risks": ["External customer message"]
+    }
+  },
+  {
+    "id": "saas_approval_deploy_fix",
+    "type": "approval",
+    "title": "Deploy billing export fix?",
+    "summary": "Deploy Agent found the CSV timezone bug and is ready to ship a low-risk patch.",
+    "details": "The patch only changes export formatting. It does not touch invoices, payments, or subscription state.",
+    "status": "waiting",
+    "priority": "medium",
+    "neededAt": "2026-05-15T17:00:00+03:00",
+    "project": "Product",
+    "agent": { "id": "deploy-agent", "name": "Deploy Agent" },
+    "actions": ["approve", "reject"],
+    "metadata": {
+      "sections": [
+        {
+          "title": "Patch",
+          "body": "Normalize export timestamps to the workspace timezone before writing CSV rows."
+        },
+        {
+          "title": "Validation",
+          "body": "Unit test covers UTC, America/New_York, and Europe/London workspaces."
+        }
+      ],
+      "risks": ["Low risk: display-only export data"]
+    }
+  },
+  {
+    "id": "saas_choice_week_focus",
+    "type": "choice",
+    "title": "Which growth task should get today's maker block?",
+    "summary": "Growth Agent found three useful tasks, but only one fits the two-hour deep-work window.",
+    "details": "Choose the task that should get your uninterrupted founder time today.",
+    "status": "waiting",
+    "priority": "medium",
+    "project": "Growth",
+    "agent": { "id": "growth-agent", "name": "Growth Agent" },
+    "actions": ["choose"],
+    "options": [
+      { "id": "pricing-page", "title": "Rewrite pricing page", "description": "Highest leverage for current traffic; improves trial-to-paid clarity." },
+      { "id": "demo-script", "title": "Record demo script", "description": "Useful for outbound replies, but can wait one day." },
+      { "id": "template-pack", "title": "Ship template pack", "description": "Good for activation, but needs more product polish first." },
+      { "id": "partner-list", "title": "Clean partner list", "description": "Low effort, lower upside than conversion work." }
+    ]
+  },
+  {
+    "id": "saas_question_security",
+    "type": "question",
+    "title": "How should we answer the SOC 2 question?",
+    "summary": "A 120-seat prospect asked whether Sipher has SOC 2 or an equivalent security plan.",
+    "details": "The agent needs your preferred positioning before replying to avoid overpromising.",
+    "status": "waiting",
+    "priority": "high",
+    "project": "Sales",
+    "agent": { "id": "sales-agent", "name": "Sales Agent" },
+    "actions": ["answer"],
+    "input": {
+      "kind": "short_text",
+      "placeholder": "Example: say SOC 2 is planned for Q3, share current controls, offer security call.",
+      "required": true
+    }
+  },
+  {
+    "id": "saas_status_support",
+    "type": "status",
+    "title": "Support queue is under control",
+    "summary": "Four tickets are open, all categorized, and no customer is waiting on you right now.",
+    "details": "Two tickets are how-to questions, one is a billing receipt request, and one is a low-priority feature suggestion.",
+    "status": "waiting",
+    "priority": "low",
+    "project": "Support",
+    "agent": { "id": "support-agent", "name": "Support Agent" },
+    "actions": ["mark_read"],
+    "progress": 75,
+    "metadata": {
+      "showProgress": true
+    },
+    "blocker": "No founder action needed"
+  },
+  {
+    "id": "saas_checklist_launch",
+    "type": "checklist",
+    "title": "Onboarding email launch checklist",
+    "summary": "Marketing Ops is preparing the new onboarding sequence for launch after approval.",
+    "details": "Open an item if you need the exact work behind the checklist step.",
+    "status": "waiting",
+    "priority": "medium",
+    "project": "Lifecycle",
+    "agent": { "id": "marketing-ops", "name": "Marketing Ops" },
+    "actions": ["complete"],
+    "metadata": {
+      "checklist": [
+        {
+          "id": "segment",
+          "title": "Confirm trial-user segment",
+          "status": "done",
+          "detail": "Targets users who created a workspace but have not invited a second agent."
+        },
+        {
+          "id": "links",
+          "title": "Verify setup links",
+          "status": "done",
+          "detail": "All links point to the new checklist docs and include UTM tags."
+        },
+        {
+          "id": "preview",
+          "title": "Approve final preview",
+          "status": "todo",
+          "detail": "Needs a quick read for tone before the sequence is activated."
+        }
+      ]
+    }
+  },
+  {
+    "id": "saas_comparison_pricing",
+    "type": "comparison",
+    "title": "Choose the next pricing experiment",
+    "summary": "Pricing Agent compared three experiments that could improve trial-to-paid conversion this week.",
+    "details": "The recommendation is based on current traffic, engineering effort, and risk to existing customers.",
+    "status": "waiting",
+    "priority": "medium",
+    "neededAt": "2026-05-15T16:30:00+03:00",
+    "project": "Revenue",
+    "agent": { "id": "pricing-agent", "name": "Pricing Agent" },
+    "actions": ["choose"],
+    "options": [
+      {
+        "id": "annual-discount",
+        "title": "Annual discount callout",
+        "description": "Fastest test: make the annual savings clearer on pricing without changing plans.",
+        "recommended": true
+      },
+      {
+        "id": "starter-plan",
+        "title": "Starter plan trial",
+        "description": "Could widen top-of-funnel, but risks anchoring new users too low."
+      },
+      {
+        "id": "usage-metering",
+        "title": "Usage-based overages",
+        "description": "Best long-term revenue fit, but needs billing logic and clearer customer education."
+      }
+    ]
+  }
+]

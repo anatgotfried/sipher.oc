@@ -1,0 +1,253 @@
+[
+  {
+    "id": "ideal_brief_morning",
+    "type": "briefing",
+    "title": "Morning action brief",
+    "summary": "Four cards need a quick human call.",
+    "details": "A short feed of the decisions, blockers, and approvals waiting for you.",
+    "priority": "high",
+    "project": "Daily Brief",
+    "agent": {
+      "id": "hermes",
+      "name": "Hermes",
+      "avatarUrl": "/assets/hermes-avatar.svg"
+    },
+    "actions": [
+      { "id": "investigate", "label": "Review cards", "style": "primary" },
+      { "id": "archive", "label": "Archive", "style": "neutral" }
+    ],
+    "metadata": {
+      "dailyBrief": {
+        "greeting": {
+          "name": "Alex",
+          "salutation": "Good morning",
+          "subtitle": "Four cards need a quick human call."
+        },
+        "cards": [
+          { "id": "weather", "enabled": true },
+          {
+            "id": "priorities",
+            "enabled": true,
+            "data": {
+              "items": [
+                { "title": "Send weekly summary to Riley?", "color": "purple" },
+                { "title": "Choose hotel shortlist", "color": "green" },
+                { "title": "Approve deploy promotion", "color": "blue" }
+              ]
+            }
+          },
+          {
+            "id": "newsfeed",
+            "enabled": true,
+            "data": {
+              "items": [
+                { "title": "Sipher screenshot pass is ready", "summary": "Use the latest Today screen for the next review." },
+                { "title": "Trip planning has three hotel options", "summary": "The shortlist is ready in Needs Me." }
+              ]
+            }
+          }
+        ],
+        "weather": {
+          "tempF": 72,
+          "tempC": 22,
+          "unit": "F",
+          "title": "Clear evening",
+          "text": "Clear and comfortable after 17:30, with light wind and low rain risk.",
+          "location": "Sample City",
+          "condition": "clear",
+          "timeOfDay": "evening",
+          "feelsLike": "70°F",
+          "wind": "5 mph",
+          "humidity": "47%",
+          "rainChance": "5%"
+        },
+        "calendar": {
+          "title": "One conflict at 14:00",
+          "summary": "School pickup overlaps with the contractor call."
+        },
+        "openItems": {
+          "title": "4 cards need you",
+          "summary": "Email, deploy, hotel choice, and file-change approval."
+        },
+        "emails": [
+          {
+            "from": "Hermes",
+            "subject": "Riley weekly summary",
+            "summary": "Draft ready. Needs send/edit/reject."
+          }
+        ],
+        "projects": [
+          {
+            "name": "Sipher",
+            "status": "Ready for one clean marketing screenshot pass."
+          },
+          {
+            "name": "Trip planning",
+            "status": "Hotel shortlist narrowed to three good options."
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "ideal_deploy_promotion",
+    "type": "approval",
+    "title": "Promote preview to production?",
+    "summary": "Deploy Agent says preview checks passed and needs explicit approval.",
+    "details": "This changes the live production app. Review checks, release note, and rollback plan before promoting.",
+    "priority": "high",
+    "project": "Sipher Website",
+    "agent": {
+      "id": "deploy-agent",
+      "name": "Deploy Agent"
+    },
+    "actions": [
+      { "id": "approve", "label": "Promote", "style": "primary", "consequential": true, "confirmLabel": "Promote to production" },
+      { "id": "request_changes", "label": "Hold", "style": "danger" }
+    ],
+    "metadata": {
+      "sections": [
+        {
+          "title": "Preview checks",
+          "body": "Landing page loads, all showcase images resolve, GitHub CTA opens the open-source repo, and mobile layout fits 390px."
+        },
+        {
+          "title": "Release note",
+          "body": "Dark orange Sipher marketing page with real app screenshots and concrete agent-card examples."
+        },
+        {
+          "title": "Rollback plan",
+          "body": "Re-alias the previous Vercel deployment if the homepage visual check fails."
+        }
+      ],
+      "risks": [
+        "Production promotion",
+        "Public website changes immediately"
+      ],
+      "target": "sipher.site production alias"
+    }
+  },
+  {
+    "id": "ideal_eden_weekly_summary",
+    "type": "approval",
+    "title": "Send Riley the weekly summary?",
+    "summary": "Hermes drafted the family logistics update and needs a send/edit/reject decision.",
+    "details": "This sends an external message. Confirm recipient, subject, body, and risks before approving.",
+    "priority": "high",
+    "project": "Family",
+    "agent": {
+      "id": "hermes",
+      "name": "Hermes",
+      "avatarUrl": "/assets/hermes-avatar.svg"
+    },
+    "actions": [
+      { "id": "send", "label": "Send", "style": "primary", "consequential": true, "confirmLabel": "Send email" },
+      { "id": "edit", "label": "Edit", "style": "neutral" },
+      { "id": "reject", "label": "Reject", "style": "danger" }
+    ],
+    "metadata": {
+      "draft": {
+        "to": "Riley <riley@example.com>",
+        "subject": "Weekly summary and pickup notes",
+        "body": "Hi Riley,\n\nQuick summary for this week:\n\n- Camp runs Sunday through Thursday, 08:30-14:00.\n- Pickup is at the north gate unless it rains.\n- Sam has tennis Thursday 17:10-18:10.\n- I will confirm Friday lunch by tomorrow morning.\n\nThanks,\nAlex"
+      },
+      "risks": [
+        "External recipient",
+        "Includes family schedule details"
+      ]
+    }
+  },
+  {
+    "id": "ideal_hotel_choice",
+    "type": "comparison",
+    "title": "Which hotel should I book?",
+    "summary": "Travel Agent narrowed the trip to three good options and recommends the quietest one.",
+    "details": "Choose one hotel. The agent will hold the room, check cancellation terms, and prepare the booking approval card.",
+    "priority": "medium",
+    "project": "June Trip",
+    "agent": {
+      "id": "travel-agent",
+      "name": "Travel Agent"
+    },
+    "actions": [
+      { "id": "choose", "label": "Choose", "style": "primary" }
+    ],
+    "metadata": {
+      "comparison": {
+        "options": [
+          {
+            "id": "quiet-harbor",
+            "title": "Quiet Harbor",
+            "description": "Best sleep, walkable dinner, strongest reviews for service.",
+            "meta": "$286/night",
+            "recommended": true,
+            "agentWill": "hold a refundable room and draft the booking approval"
+          },
+          {
+            "id": "central-loft",
+            "title": "Central Loft",
+            "description": "Best location, smaller rooms, more street noise.",
+            "meta": "$244/night",
+            "agentWill": "check room size and noise notes before booking"
+          },
+          {
+            "id": "pool-garden",
+            "title": "Pool Garden",
+            "description": "Best for kids, 18 minutes farther from the main area.",
+            "meta": "$301/night",
+            "agentWill": "verify pool hours and breakfast details"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "ideal_file_change",
+    "type": "approval",
+    "title": "Approve this file change?",
+    "summary": "OpenClaw updated the agent integration docs to make approval cards reviewable.",
+    "details": "Review the exact change before the agent commits or opens a pull request.",
+    "priority": "medium",
+    "project": "Sipher Open Source",
+    "agent": {
+      "id": "openclaw",
+      "name": "OpenClaw"
+    },
+    "actions": [
+      { "id": "approve", "label": "Approve", "style": "primary" },
+      { "id": "request_changes", "label": "Request changes", "style": "neutral" },
+      { "id": "reject", "label": "Reject", "style": "danger" }
+    ],
+    "metadata": {
+      "sections": [
+        {
+          "title": "AGENT_INTEGRATION.md",
+          "body": "Clarifies that approval cards must include the exact draft, diff, command, recipient, risk, or attachment."
+        }
+      ],
+      "risks": [
+        "Documentation change affects how agents create cards"
+      ],
+      "diff": "--- a/AGENT_INTEGRATION.md\n+++ b/AGENT_INTEGRATION.md\n@@\n- Approval cards should be clear.\n+ Approval cards must include reviewable context: exact draft, diff, command, recipient, risk, or attachment."
+    }
+  },
+  {
+    "id": "ideal_budget_question",
+    "type": "question",
+    "title": "What monthly API budget should I use?",
+    "summary": "OpenClaw needs a budget cap before choosing hosted model routing.",
+    "details": "Answer with a monthly cap. The agent will use it to compare provider options and rate-limit defaults.",
+    "priority": "medium",
+    "project": "AI Infrastructure",
+    "agent": {
+      "id": "openclaw",
+      "name": "OpenClaw"
+    },
+    "actions": [
+      { "id": "answer", "label": "Answer", "style": "primary" }
+    ],
+    "input": {
+      "placeholder": "e.g. $50/month until usage is proven"
+    }
+  }
+]

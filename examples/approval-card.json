@@ -1,5 +1,5 @@
 {
-  "type": "approval",
+  "type": "email_approval",
   "title": "Send this email?",
   "summary": "Hermes drafted an outreach email to a contractor lead.",
   "details": "The message will be sent externally. Review the full draft before approving.",
@@ -28,9 +28,9 @@
   ],
   "metadata": {
     "draft": {
-      "to": "Jordan Lee <jordan@example.com>",
+      "to": "Casey Rivera <casey@example.com>",
       "subject": "Availability for a small build project",
-      "body": "Hi Jordan,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAnat"
+      "body": "Hi Casey,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAlex"
     },
     "risks": [
       "External recipient",

@@ -1,0 +1,331 @@
+[
+  {
+    "id": "website_morning_multi_agent_brief",
+    "type": "briefing",
+    "title": "Morning action brief",
+    "summary": "Weather, calendar, email, news, and six agent decisions for the day.",
+    "details": "This brief is generated from real Sipher card capabilities: daily brief metadata, linked source cards, approvals, choices, questions, status, and structured action events.",
+    "priority": "high",
+    "project": "Daily Brief",
+    "agent": {
+      "id": "hermes",
+      "name": "Hermes",
+      "avatarUrl": "/assets/hermes-avatar.svg"
+    },
+    "actions": [
+      { "id": "investigate", "label": "Review cards", "style": "primary" },
+      { "id": "archive", "label": "Archive", "style": "neutral" }
+    ],
+    "items": [
+      "Hermes drafted a contractor outreach email that needs send / edit / reject approval.",
+      "OpenClaw needs a hosting decision for the Sipher instance.",
+      "Atlas has implementation progress but one product question is blocking the next sprint.",
+      "Calendar Agent found a conflict tomorrow morning.",
+      "Deploy Agent has a preview build ready for production approval."
+    ],
+    "metadata": {
+      "demoTitle": "A morning with five agents",
+      "demoSubtitle": "6 decisions waiting · 3 agents active · 2 approvals · 2 choices · 1 fill-in · 1 status update",
+      "dailyBrief": {
+        "greeting": {
+          "name": "Alex",
+          "salutation": "Good morning",
+          "subtitle": "Five agents found the few things that change today."
+        },
+        "cards": [
+          { "id": "weather", "enabled": true },
+          {
+            "id": "priorities",
+            "enabled": true,
+            "data": {
+              "items": [
+                { "title": "Resolve the calendar conflict", "color": "purple" },
+                { "title": "Review contractor outreach", "color": "green" },
+                { "title": "Approve production promotion", "color": "blue" }
+              ]
+            }
+          },
+          {
+            "id": "newsfeed",
+            "enabled": true,
+            "data": {
+              "items": [
+                { "title": "Production preview is ready", "summary": "Deploy Agent passed checks and prepared rollback notes." },
+                { "title": "Hosting decision unlocks phone access", "summary": "OpenClaw recommends a private URL across devices." }
+              ]
+            }
+          }
+        ],
+        "weather": {
+          "temp": "72°",
+          "title": "Clear morning",
+          "text": "Good window for focused review before the calendar conflict.",
+          "location": "New York",
+          "condition": "clear",
+          "timeOfDay": "morning"
+        },
+        "calendar": {
+          "title": "One conflict at 09:30",
+          "summary": "Product review overlaps the contractor call. Calendar Agent needs your preference."
+        },
+        "emails": [
+          {
+            "from": "Hermes",
+            "subject": "Contractor outreach draft",
+            "summary": "External send is ready. Review recipient, budget language, and timing before approving."
+          }
+        ],
+        "openItems": {
+          "title": "6 cards need you",
+          "summary": "2 approvals, 2 choices, 1 fill-in answer, and 1 implementation blocker."
+        },
+        "news": [
+          {
+            "title": "Production preview is ready",
+            "whyItMatters": "Deploy Agent passed checks and prepared rollback notes, but promotion needs explicit approval."
+          },
+          {
+            "title": "Hosting decision unlocks phone access",
+            "whyItMatters": "OpenClaw recommends Tailscale Serve for a private URL across your devices."
+          }
+        ],
+        "projects": [
+          { "name": "Sipher", "status": "Production gate pending" },
+          { "name": "Agent Cards", "status": "Hosting path and risk rule needed" },
+          { "name": "Calendar", "status": "Conflict preference needed" },
+          { "name": "Outreach", "status": "External send approval ready" }
+        ]
+      },
+      "sections": [
+        {
+          "icon": "check-circle",
+          "title": "Approvals",
+          "body": "Hermes needs send/edit/reject on an outreach email. Deploy Agent needs promote/hold on production."
+        },
+        {
+          "icon": "folder",
+          "title": "Choices",
+          "body": "OpenClaw needs a hosting path. Calendar Agent needs one conflict resolved."
+        },
+        {
+          "icon": "message",
+          "title": "Input needed",
+          "body": "Atlas needs one fill-in rule for what should count as a high-risk action."
+        },
+        {
+          "icon": "inbox",
+          "title": "Status",
+          "body": "Atlas is 68% through the implementation queue and blocked on one product decision."
+        }
+      ],
+      "sourceCards": [
+        "hermes_contractor_outreach",
+        "openclaw_sipher_hosting_path",
+        "atlas_high_risk_rule",
+        "calendar_tomorrow_conflict",
+        "atlas_implementation_queue",
+        "deploy_production_promotion"
+      ]
+    }
+  },
+  {
+    "id": "deploy_production_promotion",
+    "type": "approval",
+    "title": "Promote preview to production?",
+    "summary": "Deploy Agent says preview checks passed and needs explicit promotion approval.",
+    "details": "This is the trust/safety gate. Agents can prepare production changes, but the human controls the final promotion.",
+    "priority": "high",
+    "project": "Agent Cards",
+    "agent": {
+      "id": "deploy-agent",
+      "name": "Deploy Agent"
+    },
+    "actions": [
+      { "id": "approve", "label": "Promote", "style": "primary", "consequential": true, "confirmLabel": "Promote preview to production" },
+      { "id": "request_changes", "label": "Hold", "style": "danger" }
+    ],
+    "metadata": {
+      "sections": [
+        {
+          "title": "Checks passed",
+          "body": "node --check server.js\nnode --check app.js\nnode --check cli/agent-cards.js\n/api/version returned current build metadata"
+        },
+        {
+          "title": "Release note",
+          "body": "Adds richer decision cards, preference capture, and read-only resolved cards."
+        },
+        {
+          "title": "Rollback",
+          "body": "Revert to previous deployment if version check or card actions fail."
+        }
+      ],
+      "risks": [
+        "Production promotion",
+        "Affects all agents using Sipher"
+      ],
+      "target": "Sipher production deployment"
+    }
+  },
+  {
+    "id": "openclaw_sipher_hosting_path",
+    "type": "comparison",
+    "title": "Choose Sipher hosting path",
+    "summary": "OpenClaw compared three ways to make Sipher available across devices.",
+    "details": "Pick the operating model. OpenClaw will turn the selected option into setup tasks.",
+    "priority": "medium",
+    "project": "Agent Cards",
+    "agent": {
+      "id": "openclaw",
+      "name": "OpenClaw"
+    },
+    "actions": [
+      { "id": "choose", "label": "Submit choice", "style": "primary" }
+    ],
+    "metadata": {
+      "comparison": {
+        "options": [
+          {
+            "id": "tailscale-serve",
+            "title": "Tailscale Serve",
+            "description": "Private URL across your devices with low operational overhead.",
+            "meta": "Recommended",
+            "recommended": true,
+            "agentWill": "configure the canonical private URL, verify /api/version, and document phone access"
+          },
+          {
+            "id": "local-only",
+            "title": "Local only",
+            "description": "Best for single-machine development, but not useful from phone or tablet.",
+            "meta": "$0",
+            "agentWill": "keep the setup simple and skip remote access"
+          },
+          {
+            "id": "always-on-vps",
+            "title": "Always-on VPS",
+            "description": "Good uptime, but requires auth, process supervision, backups, and security hardening.",
+            "meta": "More ops",
+            "agentWill": "create a deployment checklist before touching production"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "atlas_high_risk_rule",
+    "type": "question",
+    "title": "What should count as a high risk action?",
+    "summary": "Atlas needs one product rule before it finalizes the approval-card policy.",
+    "details": "The agent can detect obvious risks like external emails, production deploys, file deletion, payment, and calendar changes. It needs your preference for borderline cases.",
+    "priority": "medium",
+    "project": "Sipher Roadmap",
+    "agent": {
+      "id": "atlas",
+      "name": "Atlas"
+    },
+    "actions": [
+      { "id": "answer", "label": "Save answer", "style": "primary" },
+      { "id": "pass", "label": "Skip", "style": "neutral" },
+      { "id": "investigate", "label": "Ask agent to suggest", "style": "neutral" }
+    ],
+    "input": {
+      "placeholder": "Example: Any action that sends, deletes, publishes, spends money, changes production, or contacts another person."
+    }
+  },
+  {
+    "id": "calendar_tomorrow_conflict",
+    "type": "choice",
+    "title": "Resolve tomorrow's calendar conflict",
+    "summary": "Calendar Agent found two overlapping events from 09:30-10:00 and needs a preference.",
+    "details": "Choose which event keeps the slot. Calendar Agent will draft the follow-up for the moved event.",
+    "priority": "medium",
+    "project": "Calendar",
+    "agent": {
+      "id": "calendar-agent",
+      "name": "Calendar Agent"
+    },
+    "actions": [
+      { "id": "choose", "label": "Submit choice", "style": "primary" },
+      { "id": "pass", "label": "Pass", "style": "neutral" }
+    ],
+    "options": [
+      {
+        "id": "keep-product-review",
+        "title": "Keep product review",
+        "description": "Move the contractor call to the afternoon.",
+        "agentWill": "draft a reschedule note for the contractor"
+      },
+      {
+        "id": "keep-contractor-call",
+        "title": "Keep contractor call",
+        "description": "Ask the product review group for async notes.",
+        "agentWill": "send a short update to the product group"
+      }
+    ]
+  },
+  {
+    "id": "atlas_implementation_queue",
+    "type": "status",
+    "title": "Atlas implementation queue",
+    "summary": "Atlas completed two prep tasks and is blocked on one product decision.",
+    "details": "Completed: card schema cleanup and action event replay notes. Blocked: whether cards should support comments or keep decisions atomic.",
+    "priority": "medium",
+    "project": "Agent Cards",
+    "agent": {
+      "id": "atlas",
+      "name": "Atlas"
+    },
+    "actions": [],
+    "progress": 68,
+    "blocker": "Whether cards should support comments or keep decisions atomic",
+    "metadata": {
+      "sections": [
+        {
+          "title": "Completed",
+          "body": "Card schema cleanup\nAction event replay notes"
+        },
+        {
+          "title": "Blocked",
+          "body": "Whether cards should support comments or keep decisions atomic"
+        }
+      ]
+    }
+  },
+  {
+    "id": "hermes_contractor_outreach",
+    "type": "approval",
+    "title": "Send contractor outreach email?",
+    "summary": "Hermes drafted a message to ask availability, rate range, and relevant portfolio examples.",
+    "details": "This sends an external message. Review the full draft before approving.",
+    "priority": "high",
+    "project": "Contractor outreach",
+    "agent": {
+      "id": "hermes",
+      "name": "Hermes",
+      "avatarUrl": "/assets/hermes-avatar.svg"
+    },
+    "actions": [
+      { "id": "send", "label": "Send", "style": "primary", "consequential": true, "confirmLabel": "Send email" },
+      { "id": "edit", "label": "Edit", "style": "neutral" },
+      { "id": "reject", "label": "Reject", "style": "danger" }
+    ],
+    "metadata": {
+      "draft": {
+        "to": "Casey Rivera <casey@example.com>",
+        "subject": "Availability for a small build project",
+        "body": "Hi Casey,\n\nThanks for sending the portfolio. Are you available next week for a small build project? If so, please send your current rate range and two relevant examples.\n\nBest,\nAlex"
+      },
+      "risks": [
+        "External recipient",
+        "Mentions budget and project timing"
+      ],
+      "eventPreview": {
+        "action": "send",
+        "cardId": "hermes_contractor_outreach",
+        "payload": {
+          "approvedBy": "user",
+          "source": "sipher"
+        }
+      }
+    }
+  }
+]

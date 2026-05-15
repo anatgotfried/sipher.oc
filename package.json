@@ -1,15 +1,20 @@
 {
   "name": "agent-cards",
-  "version": "0.0.3",
+  "version": "0.0.11",
   "private": true,
   "license": "MIT",
   "description": "A local visual action feed for AI agents.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "test": "npm run test:static && npm run test:today",
+    "test:static": "node --test tests/today-weather-assets.test.js",
+    "test:today": "playwright test",
     "seed": "node cli/agent-cards.js seed",
     "simulate": "node cli/agent-cards.js simulate realistic",
+    "simulate:website-demo": "node cli/agent-cards.js simulate website-demo",
     "simulate:edge": "node cli/agent-cards.js simulate edge",
+    "generate:today-assets": "node scripts/generate-today-assets.js",
     "version:bump": "node scripts/bump-version.js",
     "create:approval": "node cli/agent-cards.js create examples/approval-card.json",
     "create:choice": "node cli/agent-cards.js create examples/choice-card.json",
@@ -20,5 +25,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }
