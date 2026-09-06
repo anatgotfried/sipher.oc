@@ -3,7 +3,8 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { execFileSync } = require("node:child_process");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
 const { spawn } = require("node:child_process");
 const pkg = require("./package.json");
 
@@ -20,6 +21,10 @@ const updateUrl = process.env.AGENT_CARDS_UPDATE_URL || "";
 const canonicalUrl = process.env.AGENT_CARDS_CANONICAL_URL || "";
 const serverStartedAt = new Date().toISOString();
 let apiQueue = Promise.resolve();
+const execFileAsync = promisify(execFile);
+const gitCache = { info: null, refreshedAt: 0, pending: null, fetchPending: null };
+const gitRefreshIntervalMs = 60_000;
+const staticRootFiles = new Set(["index.html", "privacy.html", "terms.html", "robots.txt", "manifest.webmanifest", "apple-touch-icon.png", "icon.png", "icon-192.png", "icon-512.png", "icon.svg", "style.css", "app.js"]);
 
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -43,7 +48,16 @@ async function ensureDb() {
 
 async function readDb() {
   await ensureDb();
-  return JSON.parse(await fs.readFile(dbPath, "utf8"));
+  const db = JSON.parse(await fs.readFile(dbPath, "utf8"));
+  let migrated = false;
+  for (const card of db.cards || []) {
+    if (!Number.isInteger(card.revision) || card.revision < 1) {
+      card.revision = 1;
+      migrated = true;
+    }
+  }
+  if (migrated) await writeDb(db);
+  return db;
 }
 
 async function writeDb(db) {
@@ -127,7 +141,8 @@ function normalizeCard(input) {
     metadata: input.metadata || {},
     expiresAt: input.expiresAt || input.expiration || null,
     createdAt: input.createdAt || time,
-    updatedAt: input.updatedAt || time
+    updatedAt: input.updatedAt || time,
+    revision: Number.isInteger(input.revision) && input.revision > 0 ? input.revision : 1
   };
 }
 
@@ -230,49 +245,46 @@ function compareVersions(a, b) {
   return 0;
 }
 
-function git(args) {
-  try {
-    return execFileSync("git", args, {
-      cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-  } catch {
-    return "";
-  }
-}
-
-function gitMetadata() {
-  const branch = git(["branch", "--show-current"]);
-  const commit = git(["rev-parse", "HEAD"]);
-  const shortCommit = commit ? commit.slice(0, 7) : "";
-  const upstream = git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
-  const upstreamCommit = upstream ? git(["rev-parse", "@{u}"]) : "";
-  const dirty = Boolean(git(["status", "--porcelain"]));
-  const aheadBehind = upstream ? git(["rev-list", "--left-right", "--count", "HEAD...@{u}"]) : "";
-  const [ahead = "", behind = ""] = aheadBehind.split(/\s+/);
-  return {
-    branch,
-    commit,
-    shortCommit,
-    upstream,
-    upstreamCommit,
-    dirty,
-    ahead: Number(ahead) || 0,
-    behind: Number(behind) || 0
-  };
-}
-
 function refreshGitMetadata() {
-  git(["fetch", "--quiet", "origin"]);
+  if (gitCache.fetchPending) return gitCache.fetchPending;
+  gitCache.fetchPending = execFileAsync("git", ["fetch", "--quiet", "origin"], { cwd: root, timeout: 5000, killSignal: "SIGKILL" })
+    .finally(() => { gitCache.fetchPending = null; });
+  return gitCache.fetchPending;
 }
 
-function runGit(args) {
-  return execFileSync("git", args, {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  }).trim();
+async function gitAsync(args) {
+  try {
+    const result = await execFileAsync("git", args, { cwd: root, encoding: "utf8", timeout: 1500, killSignal: "SIGKILL" });
+    return String(result.stdout || "").trim();
+  } catch { return null; }
+}
+
+async function gitMetadataAsync() {
+  const [branch, commit, upstream, dirtyOutput] = await Promise.all([
+    gitAsync(["branch", "--show-current"]), gitAsync(["rev-parse", "HEAD"]),
+    gitAsync(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]), gitAsync(["status", "--porcelain"])
+  ]);
+  if ([branch, commit, upstream, dirtyOutput].some((value) => value === null)) return null;
+  const [upstreamCommit, aheadBehind] = await Promise.all([
+    upstream ? gitAsync(["rev-parse", "@{u}"]) : "", upstream ? gitAsync(["rev-list", "--left-right", "--count", "HEAD...@{u}"]) : ""
+  ]);
+  if (upstream && (upstreamCommit === null || aheadBehind === null)) return null;
+  const [ahead = "", behind = ""] = (aheadBehind || "").split(/\s+/);
+  return { branch, commit, shortCommit: commit ? commit.slice(0, 7) : "", upstream, upstreamCommit, dirty: Boolean(dirtyOutput), ahead: Number(ahead) || 0, behind: Number(behind) || 0 };
+}
+
+function cachedGitMetadata() {
+  if (!gitCache.pending && (gitCache.refreshedAt === 0 || Date.now() - gitCache.refreshedAt >= gitRefreshIntervalMs)) {
+    gitCache.pending = (async () => {
+      try {
+        await refreshGitMetadata();
+        return await gitMetadataAsync();
+      } catch {
+        return null;
+      }
+    })().then((info) => { gitCache.info = info; gitCache.refreshedAt = Date.now(); return info; }).finally(() => { gitCache.pending = null; });
+  }
+  return gitCache.info;
 }
 
 function restartServerSoon() {
@@ -296,10 +308,10 @@ function requestOrigin(req) {
 }
 
 function versionPayload(req) {
-  refreshGitMetadata();
-  const gitInfo = gitMetadata();
+  const gitInfo = cachedGitMetadata();
   const versionBehind = compareVersions(currentVersion, latestVersion) < 0;
-  const gitBehind = gitInfo.behind > 0;
+  const gitBehind = Boolean(gitInfo && gitInfo.behind > 0);
+  const gitKnown = Boolean(gitInfo);
   let hostMismatch = false;
 
   if (canonicalUrl) {
@@ -314,13 +326,14 @@ function versionPayload(req) {
     app: "agent-cards",
     currentVersion,
     latestVersion,
-    sourceId: `${currentVersion}${gitInfo.shortCommit ? `+${gitInfo.shortCommit}` : ""}${gitInfo.dirty ? ".dirty" : ""}`,
-    latest: !versionBehind && !gitBehind && !hostMismatch,
+    sourceId: `${currentVersion}${gitInfo?.shortCommit ? `+${gitInfo.shortCommit}` : ""}${gitInfo?.dirty ? ".dirty" : ""}`,
+    latest: gitKnown && !versionBehind && !gitBehind && !hostMismatch,
     updateAvailable: versionBehind || gitBehind,
     stale: hostMismatch,
     staleReasons: [
       versionBehind ? "package_version_behind" : "",
       gitBehind ? "git_upstream_behind" : "",
+      !gitKnown ? "git_info_unavailable" : "",
       hostMismatch ? "non_canonical_url" : ""
     ].filter(Boolean),
     updateCommand,
@@ -329,7 +342,7 @@ function versionPayload(req) {
     requestUrl: requestOrigin(req),
     servedFrom: root,
     serverStartedAt,
-    git: gitInfo
+    git: gitInfo || { known: false }
   };
 }
 
@@ -620,8 +633,13 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/update") {
-    runGit(["fetch", "origin"]);
-    const before = gitMetadata();
+    try {
+      await refreshGitMetadata();
+    } catch (error) {
+      return json(res, 502, { error: "git_fetch_failed", message: error.message });
+    }
+    const before = await gitMetadataAsync();
+    if (!before) return json(res, 503, { error: "git_unavailable", message: "Git metadata is unavailable." });
     const versionBehind = compareVersions(currentVersion, latestVersion) < 0;
     if (!versionBehind && before.behind === 0) {
       return json(res, 200, { ok: true, updated: false, before, after: before, output: "Already current." });
@@ -629,8 +647,10 @@ async function handleApi(req, res, url) {
     if (before.dirty) {
       return json(res, 409, { error: "dirty_worktree", message: "Commit or stash local changes before updating.", before });
     }
-    const pulled = runGit(["pull", "--ff-only"]);
-    const after = gitMetadata();
+    const pulled = await gitAsync(["pull", "--ff-only"]);
+    if (pulled === null) return json(res, 502, { error: "git_pull_failed", message: "Git pull failed.", before });
+    const after = await gitMetadataAsync();
+    if (!after) return json(res, 503, { error: "git_unavailable", message: "Git metadata is unavailable after update.", before });
     const updated = before.commit !== after.commit;
     if (updated) restartServerSoon();
     return json(res, 200, { ok: true, updated, before, after, output: pulled });
@@ -692,10 +712,20 @@ async function handleApi(req, res, url) {
 
     if (req.method === "PATCH" && parts.length === 3) {
       const patch = await readBody(req);
+      if (patch.id !== undefined && patch.id !== card.id) return badRequest(res, "Card id cannot be changed.");
       if (isResolved(card) && patch.status === "viewed") {
         return json(res, 409, { error: "card_resolved", card });
       }
+      if (patch.revision !== undefined && patch.revision !== card.revision) {
+        return conflict(res, "Card revision is stale.", { card });
+      }
+      delete patch.revision;
+      const candidate = { ...card, ...patch };
+      const validationError = validateCardInput(candidate, db.cards.filter((item) => item.id !== card.id));
+      if (validationError) return badRequest(res, validationError);
+      const meaningful = Object.keys(patch).some((key) => key !== "updatedAt");
       Object.assign(card, patch, { updatedAt: now() });
+      if (meaningful) card.revision = (Number.isInteger(card.revision) ? card.revision : 1) + 1;
       db.events.push({ id: id("event"), cardId: card.id, action: "updated", payload: patch, createdAt: now() });
       await writeDb(db);
       return json(res, 200, { card });
@@ -721,22 +751,43 @@ async function handleApi(req, res, url) {
 
     if (req.method === "POST" && parts[3] === "actions") {
       const input = await readBody(req);
-      if (isResolved(card) && input.action !== "archive") {
+      const action = String(input.action || "");
+      const declared = normalizeActions(card.actions || []).some((item) => item.id === action);
+      const builtIn = action === "archive"
+        || (card.type === "email_approval" && ["send", "save_draft"].includes(action))
+        || (card.type === "status" && action === "mark_read")
+        || (card.type === "checklist" && action === "complete")
+        || (["choice", "comparison"].includes(card.type) && action === "choose")
+        || (card.type === "question" && action === "answer");
+      if (!action || (!declared && !builtIn)) return badRequest(res, "Unsupported action for this card.");
+      if (isResolved(card) && action !== "archive") {
         return json(res, 409, { error: "card_resolved", card });
       }
-      if (["edit", "request_changes"].includes(input.action) && !String(input.payload?.requestChanges || "").trim()) {
+      if (["edit", "request_changes"].includes(action) && !String(input.payload?.requestChanges || "").trim()) {
         return badRequest(res, "Request changes actions must include requestChanges text.");
       }
-      const actionConfig = normalizeActions(card.actions || []).find((action) => action.id === input.action);
-      const option = input.payload?.optionId
-        ? (card.options || []).find((item) => item.id === input.payload.optionId)
-          || (card.metadata?.comparison?.options || []).find((item) => item.id === input.payload.optionId)
-          || (card.metadata?.options || []).find((item) => item.id === input.payload.optionId)
+      if (action === "answer" && !String(input.payload?.answer || "").trim()) {
+        return badRequest(res, "Answer actions must include answer text.");
+      }
+      const optionId = input.payload?.optionId;
+      const option = optionId
+        ? (card.options || []).find((item) => item.id === optionId)
+          || (card.metadata?.comparison?.options || []).find((item) => item.id === optionId)
+          || (card.metadata?.options || []).find((item) => item.id === optionId)
         : null;
+      if (action === "choose" && !option) return badRequest(res, "Choose actions must include a valid optionId.");
+      if (optionId && !option) return badRequest(res, "Invalid optionId.");
+      if (["approve", "send"].includes(action) && !Number.isInteger(input.revision)) {
+        return badRequest(res, "Approve and send actions require revision.");
+      }
+      if (input.revision !== undefined && input.revision !== card.revision) {
+        return conflict(res, "Card revision is stale.", { card, expectedRevision: card.revision });
+      }
+      const actionConfig = normalizeActions(card.actions || []).find((item) => item.id === action);
       const event = {
         id: id("event"),
         cardId: card.id,
-        action: input.action || "respond",
+        action,
         payload: input.payload || {},
         agent: card.agent,
         project: card.project,
@@ -750,7 +801,21 @@ async function handleApi(req, res, url) {
         } : null,
         createdAt: now()
       };
+      if (["approve", "send"].includes(action) || actionConfig?.consequential) {
+        if (!Number.isInteger(input.revision)) return badRequest(res, "Consequential actions require revision.");
+        event.reviewedRevision = card.revision;
+        event.reviewedSnapshot = JSON.parse(JSON.stringify(card));
+        if (action === "send" && card.type === "email_approval") {
+          const draft = { ...(event.reviewedSnapshot.metadata?.draft || event.reviewedSnapshot.metadata?.review?.draft || {}), ...(input.payload?.draft || {}) };
+          if (!["to", "subject", "body"].every((key) => String(draft[key] || "").trim())) {
+            return badRequest(res, "Send actions require draft to, subject, and body.");
+          }
+          event.reviewedSnapshot.metadata = { ...(event.reviewedSnapshot.metadata || {}), draft };
+        }
+      }
+      const previousStatus = card.status;
       card.status = nextStatus(event.action, card);
+      if (actionConfig?.consequential && card.status === previousStatus) card.status = "approved";
       card.updatedAt = event.createdAt;
       event.cardStatus = card.status;
       db.events.push(event);
@@ -765,15 +830,24 @@ async function handleApi(req, res, url) {
 
 async function serveStatic(req, res, url) {
   const requested = url.pathname === "/" ? "/index.html" : url.pathname === "/favicon.ico" ? "/icon-192.png" : url.pathname;
-  const filePath = path.normalize(path.join(root, requested));
-  if (!filePath.startsWith(root)) return notFound(res);
+  const relative = requested.replace(/^\/+/, "");
+  if (!relative || relative.split("/").some((segment) => segment.startsWith("."))) return notFound(res);
+  if (!relative.startsWith("assets/") && !staticRootFiles.has(relative)) return notFound(res);
+  const filePath = path.resolve(root, relative);
+  const allowedRoot = path.resolve(root);
+  const allowedAssets = path.resolve(root, "assets");
+  if (!filePath.startsWith(`${allowedRoot}${path.sep}`)) return notFound(res);
   const headers = {
     "content-type": mime[path.extname(filePath)] || "application/octet-stream",
     "cache-control": "no-store"
   };
 
   try {
-    const content = await fs.readFile(filePath);
+    const realPath = await fs.realpath(filePath);
+    if (relative.startsWith("assets/")) {
+      if (!realPath.startsWith(`${allowedAssets}${path.sep}`)) return notFound(res);
+    } else if (realPath !== filePath) return notFound(res);
+    const content = await fs.readFile(realPath);
     res.writeHead(200, headers);
     res.end(content);
   } catch {

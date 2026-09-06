@@ -7,6 +7,7 @@ const state = {
   selectedId: null,
   detailOpen: false,
   pendingAction: null,
+  actionErrors: {},
   version: null,
   swipe: null,
   mutedAgents: new Set(JSON.parse(localStorage.getItem("agentCardsMutedAgents") || "[]")),
@@ -436,7 +437,9 @@ async function api(path, options = {}) {
   });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || response.statusText);
+    const error = new Error(text || response.statusText);
+    error.status = response.status;
+    throw error;
   }
   return response.status === 204 ? null : response.json();
 }
@@ -548,6 +551,15 @@ function renderVersion() {
     return;
   }
 
+  if (!version.latest && !version.updateAvailable && !version.stale) {
+    label.textContent = `v${version.currentVersion}`;
+    stateLabel.textContent = "Unchecked";
+    banner.hidden = false;
+    bannerTitle.textContent = "Version check pending";
+    bannerCopy.textContent = "The app is available. Its latest version has not been verified yet.";
+    updateButton.hidden = true;
+    return;
+  }
   const stale = Boolean(version.stale);
   const updateAvailable = Boolean(version.updateAvailable);
   const git = version.git || {};
@@ -592,8 +604,11 @@ async function updateApp() {
   }
 }
 
-async function respond(cardId, action, payload = {}) {
+async function respond(cardId, action, payload = {}, reviewedRevision) {
+  if (state.pendingAction) return;
   const card = state.cards.find((item) => item.id === cardId);
+  const revision = reviewedRevision ?? card?.revision ?? 1;
+  delete state.actionErrors[cardId];
   const actionConfig = (card?.actions || [])
     .map(normalizeAction)
     .find((item) => item.id === action);
@@ -608,7 +623,7 @@ async function respond(cardId, action, payload = {}) {
     await wait(760);
     await api(`/api/cards/${cardId}/actions`, {
       method: "POST",
-      body: JSON.stringify({ action, payload })
+      body: JSON.stringify({ action, payload, revision })
     });
     if (action === "archive") {
       state.justHandled.delete(cardId);
@@ -621,6 +636,10 @@ async function respond(cardId, action, payload = {}) {
     console.error(error);
     $(".status-dot").className = "status-dot offline";
     $("#api-status").textContent = "Action failed";
+    state.actionErrors[cardId] = error.status === 409
+      ? "This request changed or was already handled. Review its latest details before trying again."
+      : "The decision could not be recorded. Please try again.";
+    await load();
   } finally {
     state.pendingAction = null;
     render();
@@ -682,7 +701,8 @@ function hasReviewableContent(card) {
 
 function shouldConfirmAction(card, action) {
   if (action === "save_draft") return false;
-  if (["approve", "reject", "send"].includes(action)) return false;
+  if (["approve", "send"].includes(action)) return true;
+  if (action === "reject") return false;
   const actionConfig = (card.actions || []).map(normalizeAction).find((item) => item.id === action);
   const metadata = card.metadata || {};
   const review = metadata.review || {};
@@ -716,7 +736,9 @@ function openConsequenceSheet(cardId, action, options = {}) {
     action,
     payload: options.payload || {},
     mode: options.mode || (["edit", "request_changes"].includes(action) ? "request_changes" : "confirm"),
-    requestChanges: ""
+    requestChanges: "",
+    revision: card.revision || 1,
+    card: structuredClone(card)
   };
   render();
   setTimeout(() => {
@@ -739,7 +761,12 @@ async function submitConsequenceSheet() {
     await load();
     return;
   }
-  const snapshot = confirmationSnapshot(card, sheet.action);
+  if ((card.revision || 1) !== sheet.revision) {
+    state.actionErrors[card.id] = "This request changed. Review its latest details before approving.";
+    closeConsequenceSheet();
+    return;
+  }
+  const snapshot = confirmationSnapshot(sheet.card, sheet.action);
   if (sheet.mode === "confirm" && ["approval", "email_approval"].includes(card.type) && !hasReviewableContent(card)) return;
   if (sheet.mode === "request_changes" && !sheet.requestChanges.trim()) {
     state.consequenceSheet.error = "Tell the agent what to change before sending.";
@@ -752,7 +779,7 @@ async function submitConsequenceSheet() {
     ...(sheet.mode === "request_changes" ? { requestChanges: sheet.requestChanges.trim() } : {})
   };
   state.consequenceSheet = null;
-  await respond(sheet.cardId, sheet.action, payload);
+  await respond(sheet.cardId, sheet.action, payload, sheet.revision);
 }
 
 async function updateCard(cardId, patch) {
@@ -1485,6 +1512,7 @@ function renderCard(card) {
       ${renderCardBody(card)}
       ${shouldShowHandledMessage(card) ? `<div class="handled-note">${escapeHtml(handledMessage(card))}</div>` : ""}
       ${renderSwipeHint(card)}
+      ${state.actionErrors[card.id] ? `<p role="alert" class="sheet-error">${escapeHtml(state.actionErrors[card.id])}</p>` : ""}
       ${renderActions(card)}
       ${pending ? renderActionOverlay(pending) : ""}
     </article>
@@ -1501,7 +1529,7 @@ function handledMessage(card) {
   const event = latestEvent(card.id);
   if (event?.action === "mark_read") return "Marked as read.";
   if (event?.action === "save_draft") return "Saved as draft.";
-  if (event?.action === "send") return "Sent.";
+  if (event?.action === "send") return "Send approved. Waiting for the agent to execute.";
   if (event?.action === "approve") return "Approved.";
   if (event?.action === "reject") return "Not approved.";
   if (event?.action === "answer") return "Answer sent.";
@@ -1579,7 +1607,7 @@ function renderConsequenceSheet() {
     root.innerHTML = "";
     return;
   }
-  const card = state.cards.find((item) => item.id === sheet.cardId);
+  const card = sheet.card;
   if (!card) {
     root.innerHTML = "";
     return;
@@ -1600,11 +1628,11 @@ function renderConsequenceSheet() {
         </div>
       </div>
       ${detailText ? `<p class="sheet-copy">${escapeHtml(detailText)}</p>` : ""}
-      <section class="sheet-section">
+      ${isRequestChanges ? `<section class="sheet-section">
         <h3>What should change?</h3>
         <textarea class="sheet-textarea" id="sheet-request-changes" rows="4" placeholder="Tell the agent exactly what to change.">${escapeHtml(sheet.requestChanges)}</textarea>
         ${sheet.error ? `<p class="sheet-error">${escapeHtml(sheet.error)}</p>` : ""}
-      </section>
+      </section>` : renderReviewPayload({ ...card, metadata: { ...card.metadata, ...(sheet.payload.draft ? { draft: sheet.payload.draft } : {}) } })}
       <div class="sheet-actions">
         <button class="${actionConfig?.style === "danger" ? "danger-button" : "primary-button"}" type="button" data-confirm-sheet="true">${icon(actionIcons[sheet.action] || "check-circle")}${escapeHtml(primaryLabel)}</button>
       </div>
@@ -1661,7 +1689,7 @@ function renderCardBody(card) {
   }
 
   if (card.type === "approval") {
-    return "";
+    return `${card.details ? `<section class="detail-section"><h4>Proposed action</h4><p>${escapeHtml(card.details)}</p></section>` : ""}${renderReviewPayload(card)}`;
   }
 
   if (card.type === "choice") {
@@ -1967,14 +1995,6 @@ function renderActions(card, options = {}) {
       </div>
     `;
   }
-  if (card.type === "approval" && !options.detail) {
-    return `
-      <div class="actions">
-        <button class="soft-button" data-action="reject" data-card-id="${escapeHtml(card.id)}" type="button">${icon("x-circle")}Not approve</button>
-        <button class="primary-button" data-action="approve" data-card-id="${escapeHtml(card.id)}" type="button">${icon("check-circle")}Approve</button>
-      </div>
-    `;
-  }
   if (card.type === "status" && !options.detail) {
     return `
       <div class="actions">
@@ -2000,7 +2020,8 @@ function renderActions(card, options = {}) {
       ${orderCardActions(renderedActions).map((action) => {
         const className = action.style === "danger" ? "danger-button" : action.style === "primary" ? "primary-button" : "soft-button";
         const changeAttr = ["edit", "request_changes"].includes(action.id) ? ` data-request-changes="true"` : "";
-        return `<button class="${className}" data-action="${escapeHtml(action.id)}" data-card-id="${escapeHtml(card.id)}" type="button"${disabled}${changeAttr}>${icon(actionIcons[action.id] || "chevron-right")}${escapeHtml(action.label)}</button>`;
+        const reviewDisabled = ["approve", "send"].includes(action.id) && !hasReviewableContent(card) ? " disabled" : "";
+        return `<button class="${className}" data-action="${escapeHtml(action.id)}" data-card-id="${escapeHtml(card.id)}" type="button"${disabled}${reviewDisabled}${changeAttr}>${icon(actionIcons[action.id] || "chevron-right")}${escapeHtml(action.label)}</button>`;
       }).join("")}
       ${options.detail ? `<button class="ghost-button close-detail" type="button">${icon("x-circle")}Close</button>` : ""}
     </div>
@@ -2111,9 +2132,7 @@ function renderReviewPayload(card) {
     <section class="detail-section">
       <h3>Draft To Review</h3>
       <div class="review-box">
-        ${draft.to ? `<div class="review-row"><strong>To</strong><span>${escapeHtml(draft.to)}</span></div>` : ""}
-        ${draft.subject ? `<div class="review-row"><strong>Subject</strong><span>${escapeHtml(draft.subject)}</span></div>` : ""}
-        ${draft.body ? `<pre class="draft-body">${escapeHtml(draft.body)}</pre>` : ""}
+        ${typeof draft === "object" ? Object.entries(draft).map(([key, value]) => `<div class="review-row"><strong>${escapeHtml(titleize(key))}</strong><pre class="draft-body">${escapeHtml(typeof value === "string" ? value : JSON.stringify(value, null, 2))}</pre></div>`).join("") : `<pre class="draft-body">${escapeHtml(draft)}</pre>`}
       </div>
     </section>
   ` : "";
@@ -2144,12 +2163,14 @@ function renderReviewPayload(card) {
     </section>
   ` : "";
 
-  const rawMetadataHtml = !draft && !risks.length && !attachments.length && !sections.length ? `
+  const known = new Set(["draft", "risks", "attachments", "sections", "eventPreview", "review"]);
+  const extra = Object.fromEntries(Object.entries({ ...metadata, ...review }).filter(([key]) => !known.has(key)));
+  const rawMetadataHtml = Object.entries(extra).map(([key, value]) => `
     <section class="detail-section">
-      <h3>Metadata</h3>
-      <pre class="draft-body">${escapeHtml(JSON.stringify(metadata, null, 2))}</pre>
+      <h3>${escapeHtml(titleize(key))}</h3>
+      <pre class="draft-body">${escapeHtml(typeof value === "string" ? value : JSON.stringify(value, null, 2))}</pre>
     </section>
-  ` : "";
+  `).join("");
 
   const eventPreviewHtml = eventPreview ? `
     <section class="detail-section">

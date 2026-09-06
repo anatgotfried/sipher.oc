@@ -1,3 +1,5 @@
+> Approval API update: read the card's `revision` and include it at the top level of approve/send or other consequential action requests. A stale revision returns 409 and requires a fresh review. CLI: `action <card-id> approve --revision <reviewed-number>`. See [release notes](RELEASE_NOTES.md).
+
 # Agent Integration Contract
 
 This file tells agents how to create useful Agent Cards. The short version: do not send vague approval cards. Send the exact thing the human is approving.

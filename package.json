@@ -1,6 +1,6 @@
 {
   "name": "agent-cards",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "private": true,
   "license": "MIT",
   "description": "A local visual action feed for AI agents.",
@@ -8,7 +8,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "npm run test:static && npm run test:today",
-    "test:static": "node --test tests/today-weather-assets.test.js",
+    "test:static": "node --test tests/*.test.js",
     "test:today": "playwright test",
     "seed": "node cli/agent-cards.js seed",
     "simulate": "node cli/agent-cards.js simulate realistic",

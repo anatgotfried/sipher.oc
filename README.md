@@ -1,5 +1,7 @@
 # Sipher Agent Cards
 
+See [local approval release notes](RELEASE_NOTES.md) for review, revision, CLI, and test changes. Approval API callers must now supply the reviewed card revision.
+
 <p align="center">
   <img src="assets/github/sipher-today-fullscreen.png" alt="Sipher Today desktop brief with weather, priorities, and newsfeed" width="100%">
 </p>

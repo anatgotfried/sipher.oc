@@ -151,10 +151,19 @@ async function main() {
 
   if (command === "action") {
     if (!args[0] || !args[1]) throw new Error("Usage: agent-cards action <card-id> <action> [payload.json]");
-    const payload = args[2] ? await readJson(args[2]) : {};
+    const revisionFlag = args.indexOf("--revision");
+    const revision = revisionFlag >= 0 ? Number(args[revisionFlag + 1]) : undefined;
+    if (revisionFlag >= 0 && (!Number.isSafeInteger(revision) || revision < 1)) {
+      throw new Error("--revision must be a positive integer from the card you reviewed.");
+    }
+    if (["approve", "send"].includes(args[1]) && revision === undefined) {
+      throw new Error("Review the card with show, then pass --revision <number> to approve or send.");
+    }
+    const payloadFile = args[2] && args[2] !== "--revision" ? args[2] : null;
+    const payload = payloadFile ? await readJson(payloadFile) : {};
     const result = await request(`/api/cards/${args[0]}/actions`, {
       method: "POST",
-      body: JSON.stringify({ action: args[1], payload })
+      body: JSON.stringify({ action: args[1], payload, revision })
     });
     console.log(`Recorded ${result.event.action} for ${result.card.id}; status=${result.card.status}`);
     return;
