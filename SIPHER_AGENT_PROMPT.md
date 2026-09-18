@@ -19,6 +19,7 @@ What I want in Sipher:
 - Cards classified by a real project, or `General` when no project applies.
 - Every card must include `priority`: `low`, `medium`, or `high`.
 - Include `neededAt` when there is a real date/time I should act by.
+- Set `callbackUrl` on every decision card (`approval`, `choice`, `question`, `comparison`, `email_approval`, or any card with approve/send/reject/choose/answer actions). Sipher POSTs `{ card, event }` there after I act so you wake without another human poking you. Any HTTP webhook works; Grok Bot can use a webhook-trigger routine URL.
 - One clear owner in `agent.id` and `agent.name`.
 - A daily brief when useful, with weather/calendar/news only if it changes today's decisions.
 - Today is curated through the daily brief card's `metadata.dailyBrief.cards`; enable only cards that should appear today.
@@ -43,7 +44,8 @@ Daily Brief preferences:
 - News should be decision-only unless I ask for a broader scan.
 
 When I act on a card:
-- Read the event from Sipher.
+- Your `callbackUrl` receives `{ card, event }` immediately after my action is stored.
+- Read the event from Sipher (poll/list if you also mirror events locally).
 - Treat `approve`, `send`, `reject`, `answer`, and `choose` as structured decisions.
 - Close the loop by updating, archiving, or posting a concise status card.
 - Do not ask the same thing again unless the situation materially changed.

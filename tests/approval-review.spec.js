@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { TEST_CALLBACK_URL } = require("./test-callback.cjs");
 
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
   test(`review and approve exact proposal at ${viewport.width}px`, async ({ page, request }, testInfo) => {
@@ -6,6 +7,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     const response = await request.post("/api/cards", { data: {
       type: "approval", title: "Review a release", priority: "high", project: "Review Tests",
       agent: { id: "review-test", name: "Review Agent" }, actions: ["approve", "reject"],
+      callbackUrl: TEST_CALLBACK_URL,
       metadata: { draft: { to: "reader@example.com", body: "Exact release text" },
         command: "publish --dry-run", diff: "+ reviewed change", risks: ["External recipient"] }
     }});
@@ -34,6 +36,7 @@ test("a proposal changed during review cannot be approved", async ({ page, reque
   const { card } = await (await request.post("/api/cards", { data: {
     type: "approval", title: "Changing proposal", priority: "high", project: "Review Tests",
     agent: { id: "review-test", name: "Review Agent" }, actions: ["approve", "reject"],
+    callbackUrl: TEST_CALLBACK_URL,
     metadata: { draft: { body: "Original proposal" } }
   }})).json();
   try {
@@ -55,6 +58,7 @@ test("email approval records the edited draft shown in confirmation", async ({ p
   const { card } = await (await request.post("/api/cards", { data: {
     type: "email_approval", title: "Review edited email", priority: "high", project: "Review Tests",
     agent: { id: "review-test", name: "Review Agent" }, actions: ["send", "save_draft"],
+    callbackUrl: TEST_CALLBACK_URL,
     metadata: { draft: { to: "first@example.com", subject: "Review", body: "Original text" } }
   }})).json();
   try {

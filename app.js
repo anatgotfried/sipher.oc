@@ -604,6 +604,60 @@ async function updateApp() {
   }
 }
 
+function callbackNotifyMessage(event) {
+  const notify = event?.callbackNotify;
+  if (!notify) return "";
+  if (notify.status === "pending") return "Notifying agent owner...";
+  if (notify.ok || notify.status === "delivered") return "Agent owner notified.";
+  if (notify.status === "failed") {
+    const detail = notify.error ? `: ${notify.error}` : "";
+    return `Agent notify failed${detail}`;
+  }
+  return "";
+}
+
+function wakeActions() {
+  return new Set([
+    "choose",
+    "approve",
+    "send",
+    "reject",
+    "answer",
+    "pass",
+    "edit",
+    "request_changes",
+    "save_draft"
+  ]);
+}
+
+function isWakeEvent(event) {
+  return wakeActions().has(event?.action);
+}
+
+async function pollCallbackNotify(cardId, eventId) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await wait(400);
+    const data = await api("/api/cards");
+    state.events = data.events;
+    const event = state.events.find((item) => item.id === eventId);
+    if (event?.callbackNotify && event.callbackNotify.status !== "pending") {
+      render();
+      return;
+    }
+  }
+}
+
+function renderCallbackNotifyNote(card) {
+  const event = latestEvent(card.id);
+  if (!event || !isWakeEvent(event)) return "";
+  const message = callbackNotifyMessage(event);
+  if (!message) return "";
+  const failed = event.callbackNotify?.status === "failed";
+  const pending = event.callbackNotify?.status === "pending";
+  const className = failed ? "handled-note handled-note--warn" : pending ? "handled-note handled-note--pending" : "handled-note";
+  return `<div class="${className}">${escapeHtml(message)}</div>`;
+}
+
 async function respond(cardId, action, payload = {}, reviewedRevision) {
   if (state.pendingAction) return;
   const card = state.cards.find((item) => item.id === cardId);
@@ -621,7 +675,7 @@ async function respond(cardId, action, payload = {}, reviewedRevision) {
   render();
   try {
     await wait(760);
-    await api(`/api/cards/${cardId}/actions`, {
+    const result = await api(`/api/cards/${cardId}/actions`, {
       method: "POST",
       body: JSON.stringify({ action, payload, revision })
     });
@@ -632,6 +686,9 @@ async function respond(cardId, action, payload = {}, reviewedRevision) {
     }
     delete state.pendingSelections[cardId];
     await load();
+    if (result?.event?.callbackNotify?.status === "pending") {
+      await pollCallbackNotify(cardId, result.event.id);
+    }
   } catch (error) {
     console.error(error);
     $(".status-dot").className = "status-dot offline";
@@ -1511,6 +1568,7 @@ function renderCard(card) {
       ${card.type === "briefing" ? "" : `<p class="summary">${escapeHtml(card.summary)}</p>`}
       ${renderCardBody(card)}
       ${shouldShowHandledMessage(card) ? `<div class="handled-note">${escapeHtml(handledMessage(card))}</div>` : ""}
+      ${renderCallbackNotifyNote(card)}
       ${renderSwipeHint(card)}
       ${state.actionErrors[card.id] ? `<p role="alert" class="sheet-error">${escapeHtml(state.actionErrors[card.id])}</p>` : ""}
       ${renderActions(card)}
@@ -2092,6 +2150,7 @@ function renderDetail() {
           ${events.length ? events.map((event) => `
             <div class="event">
               <strong>${escapeHtml(event.action)}</strong> · ${formatTime(event.createdAt)}<br>
+              ${event.callbackNotify ? `<span class="event-callback">${escapeHtml(callbackNotifyMessage(event) || JSON.stringify(event.callbackNotify))}</span><br>` : ""}
               ${escapeHtml(JSON.stringify(event.payload || {}))}
             </div>
           `).join("") : `<div class="event">No feedback yet.</div>`}

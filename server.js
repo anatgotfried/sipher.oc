@@ -118,6 +118,68 @@ function readBody(req) {
   });
 }
 
+const DECIDE_ACTION_IDS = new Set([
+  "choose",
+  "approve",
+  "send",
+  "reject",
+  "answer",
+  "pass",
+  "edit",
+  "request_changes",
+  "save_draft"
+]);
+const CALLBACK_MAX_ATTEMPTS = 3;
+const CALLBACK_RETRY_DELAY_MS = 400;
+const CALLBACK_TIMEOUT_MS = 5000;
+
+function builtInDecideActions(card) {
+  const ids = [];
+  if (["choice", "comparison"].includes(card.type)) ids.push("choose");
+  if (card.type === "question") ids.push("answer");
+  if (["approval", "email_approval"].includes(card.type)) {
+    ids.push("approve", "reject", "send", "edit", "request_changes", "save_draft");
+  }
+  return ids;
+}
+
+function cardDecideActions(card) {
+  const normalized = normalizeActions(card.actions || []);
+  const ids = new Set([...builtInDecideActions(card), ...normalized.map((action) => action.id)]);
+  return [...ids].filter((actionId) => {
+    const actionConfig = normalized.find((action) => action.id === actionId);
+    return DECIDE_ACTION_IDS.has(actionId) || Boolean(actionConfig?.consequential);
+  });
+}
+
+function requiresCallbackUrl(card) {
+  return cardDecideActions(card).length > 0;
+}
+
+function isValidCallbackUrl(value) {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isWakeAction(card, action) {
+  const actionConfig = normalizeActions(card.actions || []).find((item) => item.id === action);
+  if (actionConfig?.consequential) return true;
+  if (DECIDE_ACTION_IDS.has(action)) return true;
+  if (["choice", "comparison"].includes(card.type) && action === "choose") return true;
+  if (card.type === "question" && action === "answer") return true;
+  return false;
+}
+
+function isTransientCallbackFailure(error, statusCode) {
+  if (error) return true;
+  if (!statusCode) return true;
+  return statusCode >= 500 || statusCode === 408 || statusCode === 429;
+}
+
 function normalizeCard(input) {
   const time = now();
   return {
@@ -176,6 +238,10 @@ function validateCardInput(input, existingCards = []) {
     if (!hasReviewPayload) {
       return "Approval cards must include reviewable details, draft, diff, command, sections, or risks.";
     }
+  }
+  const candidate = normalizeCard({ ...input, id: input.id || "validation" });
+  if (requiresCallbackUrl(candidate) && !isValidCallbackUrl(input.callbackUrl)) {
+    return "Cards with decision actions must include a valid http(s) callbackUrl so the owning agent can be notified when the user acts.";
   }
   return "";
 }
@@ -388,17 +454,90 @@ async function expireDueCards(db) {
   if (changed) await writeDb(db);
 }
 
-async function postCallback(card, event) {
-  if (!card.callbackUrl) return;
-  try {
-    await fetch(card.callbackUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ card, event })
+async function deliverOwnerCallback(card, event) {
+  const attemptedAt = now();
+  const attempts = [];
+  for (let attempt = 1; attempt <= CALLBACK_MAX_ATTEMPTS; attempt += 1) {
+    const startedAt = now();
+    try {
+      const response = await fetch(card.callbackUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ card, event }),
+        signal: AbortSignal.timeout(CALLBACK_TIMEOUT_MS)
+      });
+      const statusCode = response.status;
+      const ok = response.ok;
+      attempts.push({ attempt, startedAt, statusCode, ok });
+      if (ok) {
+        return {
+          status: "delivered",
+          attemptedAt,
+          completedAt: now(),
+          statusCode,
+          ok: true,
+          attempts
+        };
+      }
+      if (!isTransientCallbackFailure(null, statusCode) || attempt === CALLBACK_MAX_ATTEMPTS) {
+        return {
+          status: "failed",
+          attemptedAt,
+          completedAt: now(),
+          statusCode,
+          ok: false,
+          attempts,
+          error: `HTTP ${statusCode}`
+        };
+      }
+    } catch (error) {
+      attempts.push({ attempt, startedAt, ok: false, error: error.message });
+      if (attempt === CALLBACK_MAX_ATTEMPTS || !isTransientCallbackFailure(error)) {
+        return {
+          status: "failed",
+          attemptedAt,
+          completedAt: now(),
+          ok: false,
+          attempts,
+          error: error.message
+        };
+      }
+    }
+    await new Promise((resolve) => {
+      setTimeout(resolve, CALLBACK_RETRY_DELAY_MS * attempt);
     });
-  } catch (error) {
-    console.error(`Callback failed for ${card.id}: ${error.message}`);
   }
+  return {
+    status: "failed",
+    attemptedAt,
+    completedAt: now(),
+    ok: false,
+    attempts,
+    error: "exhausted_retries"
+  };
+}
+
+async function persistEventCallbackNotify(eventId, callbackNotify) {
+  await queueApi(async () => {
+    const db = await readDb();
+    const event = db.events.find((item) => item.id === eventId);
+    if (!event) return;
+    event.callbackNotify = callbackNotify;
+    await writeDb(db);
+  });
+}
+
+function scheduleOwnerCallback(card, event) {
+  const eventId = event.id;
+  const cardSnapshot = JSON.parse(JSON.stringify(card));
+  const eventSnapshot = JSON.parse(JSON.stringify(event));
+  setImmediate(async () => {
+    const callbackNotify = await deliverOwnerCallback(cardSnapshot, eventSnapshot);
+    await persistEventCallbackNotify(eventId, callbackNotify);
+    if (!callbackNotify.ok) {
+      console.error(`Owner callback failed for ${card.id}: ${callbackNotify.error || callbackNotify.statusCode}`);
+    }
+  });
 }
 
 function demoCards() {
@@ -628,6 +767,10 @@ async function handleApi(req, res, url) {
     return json(res, 200, { ok: true, cards: db.cards.length, events: db.events.length });
   }
 
+  if (req.method === "POST" && url.pathname === "/api/callback/noop") {
+    return json(res, 200, { ok: true, received: true });
+  }
+
   if (req.method === "GET" && url.pathname === "/api/version") {
     return json(res, 200, versionPayload(req));
   }
@@ -818,9 +961,24 @@ async function handleApi(req, res, url) {
       if (actionConfig?.consequential && card.status === previousStatus) card.status = "approved";
       card.updatedAt = event.createdAt;
       event.cardStatus = card.status;
+      if (isWakeAction(card, event.action)) {
+        if (!card.callbackUrl) {
+          event.callbackNotify = {
+            status: "failed",
+            attemptedAt: event.createdAt,
+            completedAt: event.createdAt,
+            ok: false,
+            error: "missing_callback_url"
+          };
+        } else {
+          event.callbackNotify = { status: "pending", attemptedAt: event.createdAt };
+        }
+      }
       db.events.push(event);
       await writeDb(db);
-      postCallback(card, event);
+      if (isWakeAction(card, event.action) && card.callbackUrl) {
+        scheduleOwnerCallback(card, event);
+      }
       return json(res, 201, { card, event });
     }
   }
