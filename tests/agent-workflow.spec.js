@@ -217,6 +217,84 @@ test.describe.serial("agent workflow control", () => {
     await expect(page.getByText("Hidden calendar")).toHaveCount(0);
   });
 
+  test("agents can compose multi-element briefs with explicit ordering", async ({ page, request }) => {
+    const todayDate = new Date();
+    todayDate.setHours(18, 0, 0, 0);
+    const todayISO = todayDate.toISOString();
+
+    const metadata = {
+      ...originalDailyBriefMetadata,
+      dailyBrief: {
+        ...originalDailyBriefMetadata.dailyBrief,
+        greeting: {
+          name: "Alex",
+          salutation: "Good morning",
+          subtitle: "Multi-element brief with weather, priorities, and calendar."
+        },
+        cards: [
+          {
+            id: "calendar",
+            enabled: true,
+            order: 2,
+            data: {
+              items: [
+                { time: "09:30", title: "Team standup", summary: "Conflict with design review." }
+              ]
+            }
+          },
+          {
+            id: "weather",
+            enabled: true,
+            order: 0,
+            data: {
+              tempC: 24,
+              tempF: 75,
+              unit: "C",
+              title: "Clear morning",
+              text: "Perfect weather for outdoor activities.",
+              location: "Test City",
+              condition: "clear",
+              timeOfDay: "morning",
+              feelsLike: "25°C",
+              wind: "5 km/h",
+              humidity: "40%",
+              rainChance: "0%"
+            }
+          },
+          {
+            id: "priorities",
+            enabled: true,
+            order: 1,
+            data: {
+              items: [
+                { title: "First priority", summary: "Most important task.", color: "purple", neededAt: todayISO },
+                { title: "Second priority", summary: "Also important.", color: "green", neededAt: todayISO }
+              ]
+            }
+          },
+          { id: "newsfeed", enabled: false },
+          { id: "email", enabled: false },
+          { id: "openItems", enabled: false },
+          { id: "focus", enabled: false }
+        ]
+      }
+    };
+
+    const response = await request.patch(`/api/cards/${todayBriefId}`, { data: { metadata } });
+    expect(response.ok()).toBeTruthy();
+
+    await page.goto("/?view=today&workflow=multi-element");
+    await expect(page.getByText("Clear morning")).toBeVisible();
+    await expect(page.getByText("First priority")).toBeVisible();
+    await expect(page.getByText("Team standup")).toBeVisible();
+    const cardOrder = await page.locator(".today-brief-card").evaluateAll((cards) =>
+      cards.map((card) => Array.from(card.classList).find((className) => className !== "today-brief-card" && className.startsWith("today-") && className.endsWith("-card")))
+    );
+    expect(cardOrder[0]).toBe("today-weather-card");
+    expect(cardOrder[1]).toBe("today-priorities-card");
+    expect(cardOrder[2]).toBe("today-calendar-card");
+  });
+
   test("agents can view and delete individual cards", async ({ page, request }) => {
     const removable = await createCard(request, card({
       id: "delete",

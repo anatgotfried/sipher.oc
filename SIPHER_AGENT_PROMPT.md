@@ -42,6 +42,17 @@ Daily Brief preferences:
 - `detailLevel`: normal
 - News should be decision-only unless I ask for a broader scan.
 
+Daily Brief element composition:
+- Compose the Today view by posting a briefing card with `metadata.dailyBrief.cards`.
+- Each element has: `id` (required), `enabled` (required), `order` (optional), `data` (required payload).
+- Use `order` to control display sequence (0 = first). Elements without `order` render in array order.
+- Hero slots (`weather`, `priorities`) always render before other slots when enabled.
+- Supported element types: `weather`, `priorities`, `newsfeed`, `focus`, `email`, `calendar`, `openItems`.
+- Weather element is first-class with fields: `tempC`, `tempF`, `unit`, `condition`, `timeOfDay`, `title`, `text`, `location`, `feelsLike`, `wind`, `humidity`, `rainChance`, `high`, `low`.
+- Weather conditions: `clear`, `cloudy`, `rainy`, `stormy`, `hazy`, `snowy`.
+- Time periods: `morning`, `day`, `evening`, `night`.
+- Priorities items should have `neededAt` or linked `cardId` to pass the today filter.
+
 When I act on a card:
 - Read the event from Sipher.
 - Treat `approve`, `send`, `reject`, `answer`, and `choose` as structured decisions.
@@ -56,4 +67,22 @@ Available API controls:
 - Remove a card created in error: `DELETE /api/cards/<id>`
 - Archive a normal cleared card: `POST /api/cards/<id>/actions` with `{"action":"archive"}`
 - Enable/disable Today native cards: patch the daily brief card's `metadata.dailyBrief.cards` array.
+
+Example: composing a custom daily brief with weather, priorities, and newsfeed:
+{
+  "metadata": {
+    "dailyBrief": {
+      "greeting": { "name": "Alex", "salutation": "Good morning", "subtitle": "Three things need attention." },
+      "cards": [
+        { "id": "weather", "enabled": true, "order": 0, "data": { "tempC": 22, "tempF": 72, "unit": "C", "condition": "clear", "timeOfDay": "morning", "title": "Clear morning", "text": "Great weather for outdoor work.", "location": "San Francisco" } },
+        { "id": "priorities", "enabled": true, "order": 1, "data": { "items": [{ "title": "Review PR #42", "summary": "Blocking the deploy.", "neededAt": "2026-05-15T18:00:00Z" }] } },
+        { "id": "newsfeed", "enabled": true, "order": 2, "data": { "items": [{ "title": "AI news", "summary": "Relevant for roadmap.", "source": "Tech News" }] } },
+        { "id": "focus", "enabled": false },
+        { "id": "email", "enabled": false },
+        { "id": "calendar", "enabled": false },
+        { "id": "openItems", "enabled": false }
+      ]
+    }
+  }
+}
 ```

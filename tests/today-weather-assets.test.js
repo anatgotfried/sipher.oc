@@ -75,3 +75,24 @@ test("Home Screen install metadata points at Today and has icons", () => {
     assert.equal(fs.existsSync(path.join(root, fileName)), true, `${fileName} should exist`);
   }
 });
+
+test("app.js defines orderedTodayElements for element ordering", () => {
+  assert.match(appSource, /function orderedTodayElements\(daily/);
+  assert.match(appSource, /item\.order/);
+});
+
+test("app.js defines heroSlotIds for weather and priorities", () => {
+  assert.match(appSource, /const heroSlotIds = new Set\(\["weather", "priorities"\]\)/);
+});
+
+test("todayCardSlots includes all supported element types", () => {
+  const expectedSlots = ["weather", "priorities", "newsfeed", "focus", "email", "calendar", "openItems"];
+  for (const slot of expectedSlots) {
+    assert.match(appSource, new RegExp(`todayCardSlots.*${slot}`));
+  }
+});
+
+test("enabledTodaySlots respects explicit element ordering", () => {
+  assert.match(appSource, /orderedTodayElements\(daily\)/);
+  assert.match(appSource, /enabledInOrder.*filter.*enabled === true/);
+});
