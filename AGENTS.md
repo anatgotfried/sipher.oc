@@ -80,6 +80,8 @@ Multiple agents may write into the same Sipher feed. Each card must have one pri
 
 Agents can create, list, view, update, act on, archive, and delete cards through the HTTP API or CLI. Use `DELETE /api/cards/<id>` only for cards created in error; use the `archive` action for normal clearing. Today cards are controlled by patching the daily brief card's `metadata.dailyBrief.cards` entries with `enabled: true/false`.
 
+Decision cards must include `callbackUrl`. After a human acts (`choose`, `approve`, `send`, `reject`, `answer`, and similar), Sipher POSTs `{ card, event }` to that URL and records `event.callbackNotify` delivery status. Any HTTP webhook works; Grok Bot is one adapter via a webhook-trigger routine URL. See `AGENT_INTEGRATION.md`.
+
 Bad approval card:
 
 ```json

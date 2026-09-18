@@ -421,10 +421,66 @@ Every useful card should include:
 - A small set of actions that map to what the agent will actually do next.
 - A stable `agent.id`, `project`, and `priority`.
 - `neededAt` when there is a specific date/time the human should act by.
-- `callbackUrl` when useful.
+- `callbackUrl` on every card that expects a human decision (required — see Owner Wake below).
 - `expiresAt` when the card stops being useful after a deadline.
 
 `Needs Me` is ordered by `neededAt`/due date first when present, otherwise by `priority`, then recency. Always send `priority` as `low`, `medium`, or `high`; Sipher rejects cards without it.
+
+## Owner Wake (`callbackUrl`)
+
+Sipher is agent-agnostic. When a human acts on a consequential card (`choose`, `approve`, `send`, `reject`, `answer`, `pass`, `edit`, `request_changes`, `save_draft`, or any action marked `consequential: true`), Sipher must be able to wake the owning agent without another human poking them.
+
+**Rule:** cards that offer decision actions must include a non-empty `http` or `https` `callbackUrl`. Sipher returns `400` if it is missing.
+
+After the action event is persisted, Sipher `POST`s this JSON to `callbackUrl`:
+
+```json
+{
+  "card": { "...": "latest card snapshot" },
+  "event": { "...": "structured action event" }
+}
+```
+
+Sipher retries transient callback failures up to three times, does not block the user action response, and records `event.callbackNotify` with delivery status (`pending`, `delivered`, or `failed`) so the UI can show whether the owner was notified.
+
+### Generic webhook receiver
+
+Any HTTP listener works. Example minimal Node handler:
+
+```javascript
+const http = require("node:http");
+
+http.createServer(async (req, res) => {
+  if (req.method !== "POST") {
+    res.writeHead(405);
+    res.end();
+    return;
+  }
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const { card, event } = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  console.log(`Decision on ${card.id}: ${event.action}`);
+  // Resume agent work here: execute send, update calendar, post status card, etc.
+  res.writeHead(200);
+  res.end("ok");
+}).listen(8787);
+```
+
+Point `callbackUrl` at that listener, an n8n webhook, OpenClaw/Hermes route, or any other runtime that can accept HTTP.
+
+### Grok Bot and other adapters
+
+Grok Bot is one consumer, not the schema. Point `callbackUrl` at a Grok Bot webhook-trigger routine URL (or a tiny local forwarder that relays to your agent runtime). The card contract stays the same: Sipher only needs a URL that accepts `{ card, event }`.
+
+Example card field:
+
+```json
+{
+  "callbackUrl": "https://your-agent-host/decision-wake"
+}
+```
+
+Status-only cards (`mark_read`, `archive`, `investigate`, and similar non-decision actions) do not require `callbackUrl`.
 
 ## Expiration
 
@@ -466,6 +522,7 @@ Recommended expiration windows:
   "project": "Family",
   "agent": { "id": "hermes", "name": "Hermes", "avatarUrl": "/assets/hermes-avatar.svg" },
   "actions": ["approve", "reject", "edit"],
+  "callbackUrl": "https://your-agent-host/decision-wake",
   "expiresAt": "2026-05-14T18:00:00.000Z",
   "metadata": {}
 }

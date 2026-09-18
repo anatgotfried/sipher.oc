@@ -1,11 +1,12 @@
 const { test, expect } = require("@playwright/test");
 const { ensureDailyBrief, todayBriefId } = require("./workflow-fixtures.cjs");
+const { TEST_CALLBACK_URL } = require("./test-callback.cjs");
 
 const workflowPrefix = `workflow_${Date.now()}`;
 const agent = { id: "workflow-agent", name: "Workflow Agent" };
 
 function card(overrides) {
-  return {
+  const payload = {
     id: `${workflowPrefix}_${overrides.id}`,
     type: "status",
     title: "Workflow test card",
@@ -17,6 +18,15 @@ function card(overrides) {
     ...overrides,
     id: `${workflowPrefix}_${overrides.id}`
   };
+  const needsCallback = ["approval", "email_approval", "choice", "question", "comparison"].includes(payload.type)
+    || (payload.actions || []).some((action) => {
+      const id = typeof action === "string" ? action : action?.id;
+      return ["choose", "approve", "send", "reject", "answer", "request_changes"].includes(id);
+    });
+  if (needsCallback && payload.callbackUrl === undefined) {
+    payload.callbackUrl = TEST_CALLBACK_URL;
+  }
+  return payload;
 }
 
 async function createCard(request, payload) {

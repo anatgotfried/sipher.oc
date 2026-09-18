@@ -289,7 +289,7 @@ curl -X POST http://localhost:4173/api/cards/<card-id>/actions \
   -d '{"action":"approve","payload":{"source":"cli"}}'
 ```
 
-If a card includes `callbackUrl`, Sipher posts `{ card, event }` after an action is recorded.
+Decision cards must include `callbackUrl`. After a human acts on a consequential card, Sipher posts `{ card, event }` to that URL (with retries) and records `event.callbackNotify` so the UI can show whether the owning agent was notified. Any HTTP webhook works; Grok Bot can point `callbackUrl` at a webhook-trigger routine URL.
 
 Agent control summary:
 
@@ -318,7 +318,7 @@ Use `choice` for a simple pick from similar options. Use `comparison` when the a
 - `options`: choice-card options
 - `input`: question-card input metadata
 - `items`: briefing-card bullet items
-- `callbackUrl`: optional webhook for structured feedback events
+- `callbackUrl`: required `http`/`https` webhook for decision cards; Sipher POSTs `{ card, event }` after the user acts
 - `expiresAt`: optional ISO timestamp for time-sensitive cards
 - `metadata`: agent-owned structured context
 
