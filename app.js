@@ -1036,6 +1036,22 @@ function weatherBriefViewModel(weather) {
 }
 
 const todayCardSlots = ["weather", "priorities", "newsfeed", "focus", "email", "calendar", "openItems"];
+const heroSlotIds = new Set(["weather", "priorities"]);
+
+function orderedTodayElements(daily = {}) {
+  const configs = (daily.cards || daily.enabledCards || [])
+    .filter((item) => item && typeof item === "object")
+    .map((item) => {
+      const id = item.id || item.type || item.card;
+      return todayCardSlots.includes(id) ? { ...item, id } : null;
+    })
+    .filter(Boolean);
+  if (!configs.length) return [];
+  const withOrder = configs.filter((item) => typeof item.order === "number");
+  const withoutOrder = configs.filter((item) => typeof item.order !== "number");
+  withOrder.sort((a, b) => a.order - b.order);
+  return [...withOrder, ...withoutOrder];
+}
 
 function todayGreetingViewModel(daily = {}, brief = null) {
   const configured = daily.greeting || daily.header || {};
@@ -1055,13 +1071,10 @@ function todayGreetingViewModel(daily = {}, brief = null) {
 }
 
 function todayCardConfigMap(daily = {}) {
-  return (daily.cards || daily.enabledCards || [])
-    .filter((item) => item && typeof item === "object")
-    .reduce((map, item) => {
-      const id = item.id || item.type || item.card;
-      if (todayCardSlots.includes(id)) map[id] = item;
-      return map;
-    }, {});
+  return orderedTodayElements(daily).reduce((map, item) => {
+    map[item.id] = item;
+    return map;
+  }, {});
 }
 
 function todaySlotData(daily = {}, slot, fallback = {}) {
@@ -1158,8 +1171,14 @@ function todayFocusItem(daily = {}, topPriorities = [], calendar = {}) {
 }
 
 function enabledTodaySlots(daily = {}, { emails = [], calendarItems = [], openItems = [], hasFocus = true } = {}) {
-  const hasExplicitConfig = Object.keys(todayCardConfigMap(daily)).length > 0;
-  if (hasExplicitConfig) return todayCardSlots.filter((slot) => todaySlotEnabled(daily, slot));
+  const ordered = orderedTodayElements(daily);
+  const hasExplicitConfig = ordered.length > 0;
+  if (hasExplicitConfig) {
+    const enabledInOrder = ordered.filter((item) => item.enabled === true).map((item) => item.id);
+    const heroEnabled = enabledInOrder.filter((id) => heroSlotIds.has(id));
+    const restEnabled = enabledInOrder.filter((id) => !heroSlotIds.has(id));
+    return [...heroEnabled, ...restEnabled];
+  }
   return [
     daily.weather ? "weather" : "",
     openItems.length ? "priorities" : "",
@@ -1354,8 +1373,6 @@ function renderTodayDashboard() {
     calendar: () => renderTodayCalendarCard(calendarItems),
     openItems: () => renderTodayOpenItemsCard(openItems)
   };
-  const heroSlots = ["weather", "priorities"].filter((slot) => enabledSlots.includes(slot));
-  const restSlots = enabledSlots.filter((slot) => !heroSlots.includes(slot));
 
   return `
     <section class="today-dashboard">
@@ -1371,7 +1388,7 @@ function renderTodayDashboard() {
             <span>brief cards</span>
           </aside>
         </div>
-        ${[...heroSlots, ...restSlots].map((slot) => slotRenderers[slot]?.() || "").join("")}
+        ${enabledSlots.map((slot) => slotRenderers[slot]?.() || "").join("")}
       </div>
     </section>
   `;

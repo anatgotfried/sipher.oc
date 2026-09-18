@@ -413,6 +413,335 @@ curl -X PATCH "$AGENT_CARDS_URL/api/cards/<daily-brief-card-id>" \
 
 When `metadata.dailyBrief.cards` is present, update each card's `data` inside that array. Legacy sibling fields such as `metadata.dailyBrief.weather` are fallback-only.
 
+## Daily Brief Element Schema
+
+The `metadata.dailyBrief.cards` array defines the ordered, modular elements that compose the Today view. Each element follows a consistent schema:
+
+```json
+{
+  "id": "weather",
+  "type": "weather",
+  "enabled": true,
+  "order": 0,
+  "data": { /* typed payload for this element type */ }
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | yes | Unique element identifier. Must be one of the supported element types. |
+| `type` | string | no | Explicit element type. Defaults to `id` if omitted. |
+| `enabled` | boolean | yes | Whether to render this element in Today. |
+| `order` | number | no | Display order (0 = first). Elements without `order` render in array order after ordered elements. |
+| `data` | object | yes | Typed payload specific to the element type. |
+
+### Element Ordering
+
+Elements render in this priority:
+1. Elements with explicit `order` values, sorted ascending.
+2. Elements without `order`, in array order.
+3. Hero slots (`weather`, `priorities`) always render before other slots when enabled, regardless of `order`.
+
+Agents control the daily brief composition by:
+1. Including only the elements they want in the `cards` array.
+2. Setting `enabled: true` for visible elements, `enabled: false` for hidden.
+3. Optionally using `order` to control sequence within the hero and non-hero sections.
+
+## Element Catalog
+
+### `weather` — Weather Tile (First-Class Element)
+
+The weather element is the flagship visual tile Anat loves. It displays temperature, conditions, and contextual weather details with a beautiful generated background image.
+
+```json
+{
+  "id": "weather",
+  "enabled": true,
+  "data": {
+    "tempC": 22,
+    "tempF": 72,
+    "unit": "C",
+    "condition": "clear",
+    "timeOfDay": "evening",
+    "title": "Clear evening",
+    "text": "Clear and comfortable after 17:30, with light wind and low rain risk.",
+    "location": "Sample City",
+    "feelsLike": "21°C",
+    "wind": "8 km/h",
+    "humidity": "47%",
+    "rainChance": "5%",
+    "high": "26°C",
+    "low": "18°C"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tempC` | number | recommended | Temperature in Celsius. |
+| `tempF` | number | recommended | Temperature in Fahrenheit. |
+| `unit` | string | no | Primary display unit: `"C"` or `"F"`. Defaults to `"C"`. |
+| `condition` | string | yes | Weather condition: `clear`, `cloudy`, `rainy`, `stormy`, `hazy`, `snowy`. |
+| `timeOfDay` | string | yes | Time period: `morning`, `day`, `evening`, `night`. |
+| `title` | string | recommended | Headline like "Clear evening" or "Rainy morning". |
+| `text` | string | recommended | Contextual summary for the day's plans. |
+| `location` | string | no | Display location name. |
+| `feelsLike` | string | no | "Feels like" temperature with unit. |
+| `wind` | string | no | Wind speed with unit. |
+| `humidity` | string | no | Humidity percentage. |
+| `rainChance` | string | no | Rain probability. |
+| `high` | string | no | Day's high temperature. |
+| `low` | string | no | Day's low temperature. |
+
+The app selects the weather background image from `condition` + `timeOfDay`. Supported combinations:
+- `clear_morning`, `clear_day`, `clear_evening`, `clear_night`
+- `cloudy_morning`, `cloudy_day`, `cloudy_evening`, `cloudy_night`
+- `rainy_morning`, `rainy_day`, `rainy_evening`, `rainy_night`
+- `stormy_morning`, `stormy_day`, `stormy_evening`, `stormy_night`
+- `hazy_morning`, `hazy_day`, `hazy_evening`, `hazy_night`
+- `snowy_morning`, `snowy_day`, `snowy_evening`, `snowy_night`
+
+### `priorities` — Top Priorities List
+
+```json
+{
+  "id": "priorities",
+  "enabled": true,
+  "data": {
+    "items": [
+      {
+        "title": "Choose Agent Cards hosting path",
+        "summary": "This decides how agents and phone access will reach the local feed.",
+        "color": "purple",
+        "cardId": "demo_weekend"
+      },
+      {
+        "title": "Send weekly summary to Riley?",
+        "summary": "Hermes drafted the family logistics note.",
+        "color": "blue",
+        "cardId": "demo_send_email"
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | array | Priority items (max 3 displayed). |
+| `items[].title` | string | Priority title. |
+| `items[].summary` | string | Why it matters or what to do. |
+| `items[].color` | string | Accent color: `purple`, `green`, `blue`. |
+| `items[].cardId` | string | Optional linked card ID for tap-to-open. |
+
+### `newsfeed` — News Updates
+
+```json
+{
+  "id": "newsfeed",
+  "enabled": true,
+  "data": {
+    "items": [
+      {
+        "title": "OpenAI launches Deployment Company",
+        "summary": "Enterprise AI is moving from model access to operational implementation.",
+        "source": "OpenAI, May 11, 2026",
+        "url": "https://openai.com/index/openai-launches-the-deployment-company/"
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | array | News items (max 3 displayed). |
+| `items[].title` | string | Headline. |
+| `items[].summary` | string | Why it matters for today's decisions. |
+| `items[].source` | string | Source attribution. |
+| `items[].url` | string | Link to full article. |
+| `items[].cardId` | string | Optional linked card ID. |
+
+### `focus` — First Move Recommendation
+
+```json
+{
+  "id": "focus",
+  "enabled": true,
+  "data": {
+    "title": "Start here",
+    "summary": "Review the email from Hermes, then send it or save it as a draft.",
+    "label": "Recommended by the agent",
+    "actionLabel": "Open card",
+    "cardId": "demo_send_email"
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `title` | string | Focus action title. |
+| `summary` | string | What to do and why. |
+| `label` | string | Subheader text. |
+| `actionLabel` | string | Button label. |
+| `cardId` | string | Linked card ID for tap-to-open. |
+
+### `email` — Email Highlights
+
+```json
+{
+  "id": "email",
+  "enabled": true,
+  "data": {
+    "items": [
+      {
+        "from": "Hermes",
+        "subject": "Contractor outreach",
+        "summary": "Draft ready. Needs send, edit, or hold.",
+        "cardId": "hermes_contractor_outreach"
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | array | Email items (max 3 displayed). |
+| `items[].from` | string | Sender name. |
+| `items[].subject` | string | Email subject. |
+| `items[].summary` | string | What action is needed. |
+| `items[].cardId` | string | Linked email approval card ID. |
+
+### `calendar` — Calendar Notes
+
+```json
+{
+  "id": "calendar",
+  "enabled": true,
+  "data": {
+    "items": [
+      {
+        "time": "09:30",
+        "title": "Team standup",
+        "summary": "Conflict with design review — needs a preference."
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | array | Calendar items (max 3 displayed). |
+| `items[].time` | string | Event time. |
+| `items[].title` | string | Event title. |
+| `items[].summary` | string | Context or conflict notes. |
+| `items[].cardId` | string | Linked calendar card ID. |
+
+### `openItems` — Needs Attention
+
+```json
+{
+  "id": "openItems",
+  "enabled": true,
+  "data": {
+    "items": [
+      {
+        "title": "Deploy billing export fix",
+        "summary": "The timezone patch is ready and low risk.",
+        "cardId": "deploy_billing_fix"
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | array | Open items (max 4 displayed). |
+| `items[].title` | string | Item title. |
+| `items[].summary` | string | Status or action needed. |
+| `items[].cardId` | string | Linked card ID. |
+
+## Composing a Custom Daily Brief
+
+Agents compose the Today view by posting a briefing card with `metadata.dailyBrief.cards`:
+
+```json
+{
+  "type": "briefing",
+  "title": "Morning brief",
+  "summary": "Weather, priorities, and one news item today.",
+  "project": "Daily Brief",
+  "priority": "medium",
+  "agent": { "id": "hermes", "name": "Hermes" },
+  "metadata": {
+    "dailyBrief": {
+      "greeting": {
+        "name": "Alex",
+        "salutation": "Good morning",
+        "subtitle": "Three things need attention before 10:00."
+      },
+      "cards": [
+        {
+          "id": "weather",
+          "enabled": true,
+          "order": 0,
+          "data": {
+            "tempC": 18,
+            "tempF": 64,
+            "unit": "C",
+            "condition": "cloudy",
+            "timeOfDay": "morning",
+            "title": "Cloudy morning",
+            "text": "Overcast but dry — good for focused work.",
+            "location": "San Francisco"
+          }
+        },
+        {
+          "id": "priorities",
+          "enabled": true,
+          "order": 1,
+          "data": {
+            "items": [
+              { "title": "Review PR #42", "summary": "Blocking the deploy.", "color": "purple" }
+            ]
+          }
+        },
+        {
+          "id": "newsfeed",
+          "enabled": true,
+          "order": 2,
+          "data": {
+            "items": [
+              { "title": "AI news update", "summary": "Relevant for product roadmap.", "source": "Tech News" }
+            ]
+          }
+        },
+        { "id": "focus", "enabled": false },
+        { "id": "email", "enabled": false },
+        { "id": "calendar", "enabled": false },
+        { "id": "openItems", "enabled": false }
+      ]
+    }
+  }
+}
+```
+
+### Backward Compatibility
+
+For backward compatibility, Sipher continues to support the legacy `metadata.dailyBrief.weather` and sibling fields. When `metadata.dailyBrief.cards` is present, it takes precedence. When absent, Sipher falls back to:
+
+- `dailyBrief.weather` → weather element
+- `dailyBrief.calendar` → calendar element
+- `dailyBrief.emails` → email element
+- `dailyBrief.news` / `dailyBrief.newsfeed` → newsfeed element
+- `dailyBrief.openItems` → openItems element
+- `dailyBrief.projects` → openItems element (converted)
+
+Agents should migrate to the `cards` array for full control over element ordering and composition.
+
 Every useful card should include:
 
 - A title that names the decision or status.
